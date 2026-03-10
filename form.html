@@ -838,7 +838,7 @@ const ReportGenerator = {
                 doc.setFillColor(255,255,255);
                 doc.rect(ML+col1, y, 4, rowH, 'FD');
                 doc.rect(ML+col1+4, y, col2, rowH, 'FD');
-                doc.setFont('times','bold'); doc.setFontSize(9); doc.setTextColor(0,0,0);
+                doc.setFont('times','bold'); doc.setFontSize(10); doc.setTextColor(0,0,0);
                 doc.text(String(label), ML+1.5, y+4);
                 doc.setFont('times','normal');
                 doc.text(':', ML+col1+1.2, y+4);
@@ -853,7 +853,7 @@ const ReportGenerator = {
                 // Label cell
                 doc.setDrawColor(0,0,0); doc.setFillColor(240,240,240);
                 doc.rect(ML, y, col1, rowH, 'FD');
-                doc.setFont('times','bold'); doc.setFontSize(9); doc.setTextColor(0,0,0);
+                doc.setFont('times','bold'); doc.setFontSize(10); doc.setTextColor(0,0,0);
                 doc.text(String(rowLabel), ML+1.5, y + rowH/2 + 1.2);
                 // Options area
                 const checkAreaW = CW - col1;
@@ -863,16 +863,21 @@ const ReportGenerator = {
                 options.forEach((opt, i) => {
                     const ox = ML + col1 + i * optW + 2;
                     const oy = y + (rowH - boxSz) / 2;
-                    // Draw visible square box for every option
+                    // Draw the outer square box (always visible)
                     doc.setDrawColor(0,0,0); doc.setFillColor(255,255,255);
                     doc.rect(ox, oy, boxSz, boxSz, 'FD');
-                    // If selected, draw ✓ inside the box
+                    // If selected, draw a tick using lines inside the box
                     if (opt.checked) {
-                        doc.setFont('times','bold'); doc.setFontSize(7); doc.setTextColor(0,0,0);
-                        doc.text('\u2713', ox + 0.3, oy + boxSz - 0.5);
+                        doc.setDrawColor(0,0,0); doc.setLineWidth(0.5);
+                        // Tick: start bottom-left third, go to bottom-middle, then up-right corner
+                        doc.line(ox + 0.5,          oy + boxSz*0.6,
+                                 ox + boxSz*0.38,   oy + boxSz - 0.4);
+                        doc.line(ox + boxSz*0.38,   oy + boxSz - 0.4,
+                                 ox + boxSz - 0.3,  oy + 0.4);
+                        doc.setLineWidth(0.2);
                     }
                     // Option label
-                    doc.setFont('times','normal'); doc.setFontSize(8); doc.setTextColor(0,0,0);
+                    doc.setFont('times','normal'); doc.setFontSize(10); doc.setTextColor(0,0,0);
                     doc.text(String(opt.label), ox + boxSz + 1.2, oy + boxSz - 0.4);
                 });
                 return y + rowH;
@@ -906,7 +911,7 @@ const ReportGenerator = {
             const refBlockW = refLabelW + refColonW + refValueW;
             const refStartX = (PW - refBlockW) / 2;
             refData.forEach(([lbl, val]) => {
-                doc.setFont('times','normal'); doc.setFontSize(9); doc.setTextColor(0,0,0);
+                doc.setFont('times','normal'); doc.setFontSize(10); doc.setTextColor(0,0,0);
                 doc.text(lbl, refStartX, ry);
                 doc.text(':', refStartX + refLabelW, ry);
                 doc.text(String(val), refStartX + refLabelW + refColonW + 1, ry);
@@ -929,11 +934,11 @@ const ReportGenerator = {
 
             // Left box — Submitted by
             let by = boxTop + 6;
-            doc.setFont('times','bold'); doc.setFontSize(9);
+            doc.setFont('times','bold'); doc.setFontSize(10);
             doc.text('Submitted by:', ML+3, by); by += 6;
-            doc.setFont('times','bold'); doc.setFontSize(9);
+            doc.setFont('times','bold'); doc.setFontSize(10);
             doc.text('AMK Associates Limited', ML+3, by); by += 5.5;
-            doc.setFont('times','normal'); doc.setFontSize(8.5);
+            doc.setFont('times','normal'); doc.setFontSize(10);
             doc.text('68, Khilgaon Chowdhury Para (4th floor)', ML+3, by); by += 5;
             doc.text('DIT Road Rampura, Dhaka-1219', ML+3, by); by += 5;
             doc.text('E-mail: www.amkassociatesbd@gmail.com', ML+3, by); by += 5;
@@ -943,15 +948,15 @@ const ReportGenerator = {
             // Right box — Submitted to
             const rx = ML + CW/2 + 5;
             let ty = boxTop + 6;
-            doc.setFont('times','bold'); doc.setFontSize(9);
+            doc.setFont('times','bold'); doc.setFontSize(10);
             doc.text('Submitted to:', rx, ty); ty += 6;
             rNameLines.forEach(line => { doc.text(line, rx, ty); ty += 5.5; });
-            doc.setFont('times','normal'); doc.setFontSize(8.5);
+            doc.setFont('times','normal'); doc.setFontSize(10);
             addrL.forEach(line => { doc.text(line, rx, ty); ty += 5; });
 
             // PAGE 2: COVER LETTER
             y = newPage();
-            doc.setFont('times','normal'); doc.setFontSize(9);
+            doc.setFont('times','normal'); doc.setFontSize(10);
             // Fix 3: Ref and Date on consecutive lines (ref first, date immediately after)
             doc.text('Ref.: ' + v('letter_ref'), ML, y); y += 6;
             doc.text('Date: ' + dt('letter_date'), ML, y); y += 9;
@@ -968,7 +973,7 @@ const ReportGenerator = {
             const bodyL = doc.splitTextToSize(body, CW);
             doc.text(bodyL, ML, y); y += bodyL.length*5+7;
             // "Amount in BDT" — italic, right-aligned above table
-            doc.setFont('times','italic'); doc.setFontSize(8); doc.setTextColor(0,0,0);
+            doc.setFont('times','italic'); doc.setFontSize(10); doc.setTextColor(0,0,0);
             doc.text('Amount in BDT', ML + CW, y, {align:'right'}); y += 4;
             // Table columns: equal thirds
             const col3W = CW / 3;
@@ -978,7 +983,7 @@ const ReportGenerator = {
             doc.rect(ML,           y, col3W, hdrH, 'FD');
             doc.rect(ML+col3W,     y, col3W, hdrH, 'FD');
             doc.rect(ML+col3W*2,   y, col3W, hdrH, 'FD');
-            doc.setFont('times','bold'); doc.setFontSize(9); doc.setTextColor(0,0,0);
+            doc.setFont('times','bold'); doc.setFontSize(10); doc.setTextColor(0,0,0);
             doc.text('Maximum Price',          ML + col3W*0.5,   y + 7, {align:'center'});
             doc.text('Assessed Price',         ML + col3W*1.5,   y + 7, {align:'center'});
             // Multi-line: "Forced Sale Value on / Assessed Price / (20% Depreciation)"
@@ -997,20 +1002,20 @@ const ReportGenerator = {
             doc.text(v('assessed_price','\u2014'),    ML + col3W*1.5, y + 6.5, {align:'center'});
             doc.text(v('forced_sale_value','\u2014'), ML + col3W*2.5, y + 6.5, {align:'center'});
             y += valH + 8;
-            doc.setFont('times','normal'); doc.setFontSize(9);
+            doc.setFont('times','normal'); doc.setFontSize(10);
             const closing = 'As per our understanding, the aforementioned valuation is fair and reasonable and our responsibility is restricted within the physical existence of the used vehicle and the value thereof.';
             const closingL = doc.splitTextToSize(closing, CW);
             doc.text(closingL, ML, y); y += closingL.length*5+10;
             doc.text('With best regards,', ML, y); y += 24;
             doc.setDrawColor(0,0,0);
             doc.line(ML, y, ML+78, y); doc.line(ML+100, y, ML+178, y); y += 5;
-            doc.setFont('times','bold'); doc.setFontSize(9);
+            doc.setFont('times','bold'); doc.setFontSize(10);
             doc.text(v('valuer_1_name'), ML, y); doc.text(v('valuer_2_name'), ML+100, y); y += 6;
-            doc.setFont('times','normal'); doc.setFontSize(8);
+            doc.setFont('times','normal'); doc.setFontSize(10);
             doc.text(v('valuer_1_designation'), ML, y); doc.text(v('valuer_2_designation'), ML+100, y);
             y += 12;
             // Fix 3: Enclosure section at bottom of cover letter page
-            doc.setFont('times','italic'); doc.setFontSize(9); doc.setTextColor(0,0,0);
+            doc.setFont('times','italic'); doc.setFontSize(10); doc.setTextColor(0,0,0);
             doc.text('Encl:', ML, y); 
             const enclosures = [
                 '1. Annexure-I   : Detail Report',
@@ -1078,7 +1083,10 @@ const ReportGenerator = {
              ['Dimension','dimension',['Long','Hatchback','Saloon','SUV']],
              ['Major Accidental Hist','accidental_history',['Yes','No']],
             ].forEach(([lbl,field,opts]) => { y = checkRow(y, lbl, buildOpts(field, opts)); });
-            y = tRow(y, 'Accidental Details', v('accidental_history_detail'));
+            // Fix 4: Accidental Details only if accidental_history === 'Yes'
+            if (fd['accidental_history'] === 'Yes' || (Array.isArray(fd['accidental_history']) && fd['accidental_history'].includes('Yes'))) {
+                y = tRow(y, 'Accidental Details', v('accidental_history_detail'));
+            }
             y = tRow(y, 'Additional Accessories (Exterior)', v('exterior_accessories'));
 
             // PAGE 5: ASSESSMENT + DISCLAIMER
@@ -1088,7 +1096,10 @@ const ReportGenerator = {
              ['Exterior Condition','exterior_condition',['Good','Average','Poor']],
              ['Any Known Defects','known_defects',['Yes','No']],
             ].forEach(([lbl,field,opts]) => { y = checkRow(y, lbl, buildOpts(field, opts)); });
-            y = tRow(y, 'Known Defects Detail', v('known_defects_detail'));
+            // Fix 4: Known Defects Detail only if known_defects === 'Yes'
+            if (fd['known_defects'] === 'Yes' || (Array.isArray(fd['known_defects']) && fd['known_defects'].includes('Yes'))) {
+                y = tRow(y, 'Known Defects Detail', v('known_defects_detail'));
+            }
             y += 5; if (y + 10 > CONTENT_BOTTOM) y = newPage();
             y = sectionBar(y, 'Inspection Particulars');
             [['Date of Inspection',dt('inspection_date')],['Inspection Time',v('inspection_time')],
@@ -1097,7 +1108,8 @@ const ReportGenerator = {
             ].forEach(([l,val])=>{ y = tRow(y,l,val); });
             y += 6; if (y + 10 > CONTENT_BOTTOM) y = newPage();
             y = sectionBar(y, 'Disclaimer');
-            doc.setFont('times','normal'); doc.setFontSize(9); doc.setTextColor(0,0,0);
+            y += 2; // Fix 1: gap between headline and first item
+            doc.setFont('times','normal'); doc.setFontSize(10); doc.setTextColor(0,0,0);
             ['The valuation has been performed based on our physical inspection, verification, local market analysis and assessment to the best of our knowledge.',
              "AMK's responsibility is limited to the valuation of the said vehicle only without considering any legal matter related to the vehicle and documents.",
              'Except inspection and valuation of the said vehicle, AMK or any of its Officials has no interest directly or indirectly in any manner whatsoever in the subject matter of this report.',
@@ -1106,59 +1118,50 @@ const ReportGenerator = {
             ].forEach((d,i) => {
                 const lines = doc.splitTextToSize((i+1) + '. ' + d, CW-4);
                 if (y + lines.length*5 > CONTENT_BOTTOM) y = newPage();
-                doc.text(lines, ML+2, y); y += lines.length*5;
+                doc.text(lines, ML+2, y); y += lines.length*5 + 2;
             });
 
-            // PAGE 6: PHOTOS — Fix 1: 2 images per page, stacked vertically, same size, with border
+            // PHOTOS — Fix 2: removed ref/reg line; Fix 3: renamed headlines
             const photos = Array.isArray(fd._photos) && fd._photos.length > 0 ? fd._photos : [];
             if (photos.length > 0) {
-                // Layout: 2 images per page, stacked top-bottom
-                // Available height between MT and CONTENT_BOTTOM = 247mm
-                // Each image: width = CW, height = ~90mm, gap = 8mm, caption = 6mm
-                const imgW = CW;           // full content width
-                const imgH = 90;           // image height
-                const capH = 6;            // caption height
-                const gapY = 10;           // gap between images
-                const perPage = 2;
-
+                const imgW = CW, imgH = 90, capH = 6, gapY = 10, perPage = 2;
                 for (let i = 0; i < photos.length; i++) {
                     if (i % perPage === 0) {
                         y = newPage();
-                        doc.setFont('times','bold'); doc.setFontSize(12); doc.setTextColor(0,0,0);
-                        const pageLabel = i === 0 ? 'VEHICLE PHOTOS' : 'VEHICLE PHOTOS (cont.)';
-                        doc.text(pageLabel, PW/2, y+5, {align:'center'}); y += 12;
-                        doc.setFont('times','normal'); doc.setFontSize(9);
-                        doc.text('Ref: ' + v('file_reference_number') + ' | Reg: ' + v('registration_number'), PW/2, y, {align:'center'}); y += 8;
+                        doc.setFont('times','bold'); doc.setFontSize(11); doc.setTextColor(0,0,0);
+                        // Fix 3: renamed titles
+                        const pageLabel = i === 0
+                            ? 'Annexure-III: Photograph of Vehicle'
+                            : 'Annexure-III: Photograph of Vehicle (Cont.)';
+                        doc.text(pageLabel, PW/2, y+5, {align:'center'}); y += 14;
+                        // Fix 2: ref/reg line removed
                     }
-                    const slotOnPage = i % perPage;  // 0 = top, 1 = bottom
+                    const slotOnPage = i % perPage;
                     const iy = y + slotOnPage * (imgH + capH + gapY);
-                    // Draw image with border
                     doc.setDrawColor(0,0,0);
                     try {
                         const fmt = photos[i].dataUrl.startsWith('data:image/png') ? 'PNG' : 'JPEG';
                         doc.addImage(photos[i].dataUrl, fmt, ML, iy, imgW, imgH);
                     } catch(e) { doc.setFillColor(240,240,240); doc.rect(ML, iy, imgW, imgH, 'FD'); }
-                    // Visible border on top of image
                     doc.setDrawColor(0,0,0); doc.setLineWidth(0.4);
                     doc.rect(ML, iy, imgW, imgH);
                     doc.setLineWidth(0.2);
-                    // Caption below image
                     const nm = photos[i].name.length > 40 ? photos[i].name.slice(0, 38) + '...' : photos[i].name;
-                    doc.setFont('times','normal'); doc.setFontSize(8); doc.setTextColor(0,0,0);
+                    doc.setFont('times','normal'); doc.setFontSize(10); doc.setTextColor(0,0,0);
                     doc.text(nm, PW/2, iy + imgH + 4.5, {align:'center'});
                 }
             }
 
-            // QR PAGE: dedicated, QR at top center, instructions below
+            // QR PAGE
             const qr = fd._qr;
             if (qr) {
                 y = newPage();
+                // Title: Annexure-IV
                 doc.setFont('times','bold'); doc.setFontSize(12); doc.setTextColor(0,0,0);
-                doc.text('QR CODE / DOCUMENT VERIFICATION', PW/2, y+5, {align:'center'}); y += 14;
-                doc.setFont('times','normal'); doc.setFontSize(9);
-                doc.text('Ref: ' + v('file_reference_number') + ' | Reg: ' + v('registration_number'), PW/2, y, {align:'center'}); y += 10;
+                doc.text('Annexure-IV: QR Code for Video of Vehicle', PW/2, y+5, {align:'center'}); y += 14;
                 doc.setFont('times','bold'); doc.setFontSize(10);
                 doc.text(v('qr_label','Document QR Code'), PW/2, y, {align:'center'}); y += 10;
+                // QR image centered
                 const qrSize = 60;
                 const qrX = (PW - qrSize) / 2;
                 try {
@@ -1167,33 +1170,30 @@ const ReportGenerator = {
                 } catch(e){ doc.setDrawColor(0,0,0); doc.rect(qrX, y, qrSize, qrSize); }
                 y += qrSize + 6;
                 if(fd.qr_url){
-                    doc.setFont('times','normal'); doc.setFontSize(8); doc.setTextColor(0,0,0);
+                    doc.setFont('times','normal'); doc.setFontSize(10); doc.setTextColor(0,0,0);
                     doc.text(fd.qr_url, PW/2, y, {align:'center', maxWidth:CW}); y += 8;
                 }
                 y += 6;
-                doc.setFillColor(0,0,0); doc.rect(ML, y, CW, 7, 'F');
-                doc.setFont('times','bold'); doc.setFontSize(10); doc.setTextColor(255,255,255);
-                doc.text('HOW TO SCAN THIS QR CODE', PW/2, y+5, {align:'center'});
-                doc.setTextColor(0,0,0); y += 12;
-                const instructions = [
-                    '1. Open the Camera app on your smartphone (iPhone or Android).',
-                    '2. Point the camera at the QR code above. No need to take a photo — just hold steady.',
-                    '3. A notification or link will appear on your screen. Tap it to open the document.',
-                    '4. Alternatively, open any QR code scanner app and scan the code to access the document.',
-                    '5. The link will direct you to the official BRTA verification page or the attached document.',
+                // Separator line
+                doc.setDrawColor(180,180,180); doc.setLineWidth(0.3);
+                doc.line(ML, y, ML+CW, y); doc.setLineWidth(0.2); doc.setDrawColor(0,0,0);
+                y += 7;
+                // "Instructions for use:" bold label
+                doc.setFont('times','bold'); doc.setFontSize(10); doc.setTextColor(0,0,0);
+                doc.text('Instructions for use:', ML, y); y += 7;
+                // Bullet list — 3 items matching reference image
+                const bullets = [
+                    'Download & install any QR code scanner/reader.',
+                    'Scan the attached QR code.',
+                    'Open the link using Google chrome/any browser.',
                 ];
-                doc.setFont('times','normal'); doc.setFontSize(9);
-                instructions.forEach(line => {
-                    const lines = doc.splitTextToSize(line, CW - 4);
-                    doc.text(lines, ML+2, y); y += lines.length * 5.5;
+                const bulletX = ML + 4, bulletDotX = ML + 1.5;
+                doc.setFont('times','normal'); doc.setFontSize(10);
+                bullets.forEach(line => {
+                    doc.circle(bulletDotX, y - 1.2, 0.8, 'F');
+                    const wrapped = doc.splitTextToSize(line, CW - 8);
+                    doc.text(wrapped, bulletX + 2, y); y += wrapped.length * 5.5;
                 });
-                y += 4;
-                doc.setDrawColor(0,0,0); doc.setFillColor(240,240,240);
-                const noteText = 'Note: This QR code is linked to the official vehicle verification document. Please ensure you have a stable internet connection before scanning.';
-                const noteLines = doc.splitTextToSize(noteText, CW - 8);
-                doc.rect(ML, y, CW, noteLines.length*5.5 + 6, 'FD');
-                doc.setFont('times','italic'); doc.setFontSize(8); doc.setTextColor(0,0,0);
-                doc.text(noteLines, ML+4, y+4.5);
             }
 
             const filename = 'Valuation_' + (v('registration_number')||v('brta_registration_no')||'Report') + '.pdf';
