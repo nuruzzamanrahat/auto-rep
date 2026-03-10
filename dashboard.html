@@ -1,0 +1,489 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard – AMK Valuation Portal</title>
+    <link rel="stylesheet" href="css/style.css">
+    <style>
+        .submissions-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 1.25rem; }
+        .welcome-banner { background: linear-gradient(135deg, var(--navy) 0%, var(--navy-mid) 100%); border-radius: var(--radius-lg); padding: 2rem 2.5rem; margin-bottom: 2rem; display: flex; justify-content: space-between; align-items: center; }
+        .welcome-text h2 { font-family: var(--font-display); font-size: 1.8rem; color: var(--gold); margin-bottom: 4px; }
+        .welcome-text p { color: var(--gray-400); font-size: 0.9rem; }
+    </style>
+</head>
+<body>
+<nav class="navbar">
+    <div class="navbar-brand">AMK <span>Associates</span></div>
+    <div class="navbar-right">
+        <div class="navbar-user">
+            <div class="user-avatar-sm" id="avatar-initial">?</div>
+            <span id="user-name">Loading…</span>
+        </div>
+        <a href="admin.html" id="admin-link" class="btn btn-secondary btn-sm" style="display:none;">⚙️ Admin</a>
+        <button class="btn btn-outline btn-sm" onclick="Auth.logout()">Sign Out</button>
+    </div>
+</nav>
+
+<div class="page-container">
+    <div class="welcome-banner">
+        <div class="welcome-text">
+            <h2>Good day, <span id="banner-name">—</span></h2>
+            <p>Manage your car valuation reports and track submission status.</p>
+        </div>
+        <a href="form.html" class="btn btn-primary btn-lg">+ New Report</a>
+    </div>
+
+    <div class="page-header">
+        <div>
+            <div class="page-title">My Reports</div>
+            <div class="page-subtitle">All your submitted and in-progress valuation reports</div>
+        </div>
+        <div style="display:flex;gap:10px;align-items:center;">
+            <div class="filter-tabs" style="margin-bottom:0;">
+                <button class="filter-tab active" onclick="filterBy('all',this)">All</button>
+                <button class="filter-tab" onclick="filterBy('draft',this)">Drafts</button>
+                <button class="filter-tab" onclick="filterBy('submitted',this)">Submitted</button>
+                <button class="filter-tab" onclick="filterBy('reviewed',this)">Reviewed</button>
+            </div>
+            <button class="btn btn-outline btn-sm" onclick="loadSubmissions()">↻</button>
+        </div>
+    </div>
+
+    <div class="submissions-grid" id="submissions-list">
+        <div class="loading-spinner"></div>
+    </div>
+</div>
+
+<div id="toast-container"></div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.39.3/dist/umd/supabase.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script>
+const SUPABASE_URL      = 'https://pdmcykghinfxrpdqocoj.supabase.co';
+const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InBkbWN5a2doaW5meHJwZHFvY29qIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzI5NDkwMDMsImV4cCI6MjA4ODUyNTAwM30.9fbjjWj7r8hjiqhyp2Yf3j86KBlJIo9idysSIRqMWxE';
+const db = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+const Auth = {
+    async getSession() { const { data: { session } } = await db.auth.getSession(); return session; },
+    async getProfile(userId) { const { data, error } = await db.from('profiles').select('*').eq('id', userId).single(); if (error) throw error; return data; },
+    async requireAuth(redirectTo = 'index.html') { const session = await this.getSession(); if (!session) { window.location.href = redirectTo; return null; } return session; },
+    async logout() { await db.auth.signOut(); window.location.href = 'index.html'; }
+};
+
+const UI = {
+    showToast(msg, type='info', dur=3000) {
+        const c = document.getElementById('toast-container');
+        const t = document.createElement('div');
+        t.className = `toast toast-${type}`;
+        t.textContent = msg;
+        c.appendChild(t);
+        setTimeout(()=>t.remove(), dur);
+    }
+};
+
+// ── NEW STYLED REPORT GENERATOR ─────────────────────────────────
+const ReportGenerator = {
+
+    async _loadImg(src) {
+        return new Promise((resolve) => {
+            const img = new Image();
+            img.crossOrigin = 'anonymous';
+            img.onload = () => {
+                const canvas = document.createElement('canvas');
+                canvas.width = img.naturalWidth || img.width;
+                canvas.height = img.naturalHeight || img.height;
+                canvas.getContext('2d').drawImage(img, 0, 0);
+                resolve(canvas.toDataURL('image/png'));
+            };
+            img.onerror = () => resolve(null);
+            img.src = src;
+        });
+    },
+
+    async generate(formData) {
+        const fd = formData || {};
+        UI.showToast('Generating PDF…', 'info', 15000);
+        try {
+            const { jsPDF } = window.jspdf;
+            const PW = 210, PH = 297;
+            const IMG_H = 22;
+            const MT = 30, MB = 20;
+            const ML = 16, MR = 16;
+            const CW = PW - ML - MR;
+            const CONTENT_BOTTOM = PH - MB;
+
+            const headerImg = await this._loadImg('AMK Header.png');
+            const footerImg = await this._loadImg('AKM Footer.png');
+
+            const doc = new jsPDF({ unit: 'mm', format: 'a4', orientation: 'portrait' });
+
+            const v  = (k, fb='') => { const val = fd[k]; return (val===undefined||val===null||val==='') ? fb : String(val); };
+            const ar = (k) => Array.isArray(fd[k]) ? fd[k].join(', ') : (fd[k] || '\u2014');
+            const dt = (k) => { const s = fd[k]; if(!s) return '\u2014'; try { return new Date(s).toLocaleDateString('en-GB',{day:'2-digit',month:'short',year:'numeric'}); } catch(e){return s;} };
+
+            const drawHeaderFooter = () => {
+                if (headerImg) { try { doc.addImage(headerImg, 'PNG', 0, 0, PW, IMG_H); } catch(e) {} }
+                if (footerImg) { try { doc.addImage(footerImg, 'PNG', 0, PH - IMG_H, PW, IMG_H); } catch(e) {} }
+            };
+
+            const newPage = () => { doc.addPage(); drawHeaderFooter(); return MT; };
+
+            const sectionBar = (y, text) => {
+                doc.setDrawColor(0,0,0); doc.setFillColor(255,255,255);
+                doc.rect(ML, y, CW, 7, 'FD');
+                doc.setFont('times','bold'); doc.setFontSize(10); doc.setTextColor(0,0,0);
+                doc.text(text.toUpperCase(), ML+2, y+5); return y + 9;
+            };
+
+            const tRow = (y, label, value) => {
+                const rowH = 6, col1 = 74, col2 = CW - col1 - 4;
+                if (y + rowH > CONTENT_BOTTOM) { y = newPage(); }
+                doc.setDrawColor(0,0,0); doc.setFillColor(240,240,240);
+                doc.rect(ML, y, col1, rowH, 'FD'); doc.setFillColor(255,255,255);
+                doc.rect(ML+col1, y, 4, rowH, 'FD'); doc.rect(ML+col1+4, y, col2, rowH, 'FD');
+                doc.setFont('times','bold'); doc.setFontSize(9); doc.setTextColor(0,0,0);
+                doc.text(String(label), ML+1.5, y+4); doc.setFont('times','normal');
+                doc.text(':', ML+col1+1.2, y+4);
+                const lines = doc.splitTextToSize(String(value||'\u2014'), col2-3);
+                doc.text(lines[0], ML+col1+5.5, y+4); return y + rowH;
+            };
+
+            const checkRow = (y, rowLabel, options) => {
+                const rowH = 6.5, col1 = 74;
+                if (y + rowH > CONTENT_BOTTOM) { y = newPage(); }
+                doc.setDrawColor(0,0,0); doc.setFillColor(240,240,240);
+                doc.rect(ML, y, col1, rowH, 'FD');
+                doc.setFont('times','bold'); doc.setFontSize(9); doc.setTextColor(0,0,0);
+                doc.text(String(rowLabel), ML+1.5, y+4.2);
+                const checkAreaW = CW - col1 - 4;
+                doc.setFillColor(255,255,255); doc.rect(ML+col1, y, checkAreaW + 4, rowH, 'FD');
+                const optW = checkAreaW / options.length;
+                const x = ML + col1 + 4;
+                options.forEach((opt, i) => {
+                    const cx = x + i * optW + 1, textY = y + rowH - 1.8;
+                    const symbol = opt.checked ? '\u2611' : '\u2610';
+                    doc.setFont('zapfdingbats','normal'); doc.setFontSize(9); doc.setTextColor(0,0,0);
+                    doc.text(symbol, cx, textY);
+                    doc.setFont('times','normal'); doc.setFontSize(8); doc.setTextColor(0,0,0);
+                    doc.text(String(opt.label), cx + 4.5, textY);
+                });
+                return y + rowH;
+            };
+
+            const buildOpts = (field, optLabels) => {
+                const saved = Array.isArray(fd[field]) ? fd[field] : [];
+                return optLabels.map(l => ({ label: l, checked: saved.includes(l) }));
+            };
+
+            drawHeaderFooter();
+            let y = MT;
+
+            // PAGE 1: COVER
+            doc.setFont('times','bold'); doc.setFontSize(12); doc.setTextColor(0,0,0);
+            doc.text('INSPECTION & VALUATION REPORT', PW/2, y+5, {align:'center'}); y += 9;
+            doc.setFont('times','normal'); doc.setFontSize(9);
+            doc.text('Used / Pre-Owned Vehicle', PW/2, y+4, {align:'center'}); y += 12;
+            [['Reference Account Name', v('reference_account_name')],['File Reference Number', v('file_reference_number')],
+             ['Referred By', v('referred_by')],['Date of Inspection', dt('date_of_inspection')]
+            ].forEach(([lbl,val]) => {
+                doc.setFont('times','bold'); doc.setFontSize(9); doc.text(lbl, ML, y);
+                doc.setFont('times','normal'); doc.text(': ' + val, ML+68, y); y += 6;
+            });
+            y += 4;
+            // Fix 4: Dynamic box height to prevent recipient address overflow
+            const rNameLines = doc.splitTextToSize(v('recipient_name'), CW/2-14);
+            const addrL = doc.splitTextToSize(v('recipient_address'), CW/2-14);
+            const toContentLines = rNameLines.length + addrL.length;
+            const boxH = Math.max(36, 18 + toContentLines * 5);
+            doc.setDrawColor(0,0,0); doc.setFillColor(255,255,255);
+            doc.rect(ML, y, CW/2-2, boxH, 'FD'); doc.rect(ML+CW/2+2, y, CW/2-2, boxH, 'FD');
+            doc.setFont('times','bold'); doc.setFontSize(9); doc.text('Submitted by:', ML+3, y+6);
+            doc.setFont('times','normal'); doc.text('AMK Associates Limited', ML+3, y+12);
+            doc.text('68, Khilgaon Chowdhurypara (4th floor)', ML+3, y+18);
+            doc.text('DIT Road, Rampura, Dhaka-1219', ML+3, y+24);
+            doc.setFont('times','bold'); doc.setFontSize(9); doc.text('Submitted to:', ML+CW/2+5, y+6);
+            rNameLines.forEach((line, i) => { doc.text(line, ML+CW/2+5, y+12+i*5); });
+            doc.setFont('times','normal');
+            addrL.forEach((line, i) => { doc.text(line, ML+CW/2+5, y+12+rNameLines.length*5+i*5); });
+
+            // PAGE 2: COVER LETTER
+            y = newPage();
+            doc.setFont('times','normal'); doc.setFontSize(9);
+            // Fix 3: Date immediately after Ref (on next line, not right-aligned same line)
+            doc.text('Ref.: ' + v('letter_ref'), ML, y); y += 6;
+            doc.text('Date: ' + dt('letter_date'), ML, y); y += 9;
+            doc.setFont('times','bold'); doc.text(v('recipient_name'), ML, y); y += 6;
+            doc.setFont('times','normal');
+            const addrLines2 = doc.splitTextToSize(v('recipient_address'), CW);
+            doc.text(addrLines2, ML, y); y += addrLines2.length*5+5;
+            doc.setFont('times','bold'); doc.text('Re: Inspection & Valuation Report of used/pre-owned vehicle', ML, y); y += 8;
+            doc.setFont('times','normal'); doc.text('Dear Sir,', ML, y); y += 7;
+            doc.text('Greetings from AMK Associates Limited and Thank You very much for referring us!', ML, y, {maxWidth:CW}); y += 11;
+            const body = 'Pursuant to your communication through ' + v('comm_medium') + ', dated: ' + dt('comm_date') + ' by ' + v('comm_person') + ', we, AMK Associates Limited has conducted the inspection and valuation of the referred vehicle, summary of which is as per following:';
+            const bodyL = doc.splitTextToSize(body, CW);
+            doc.text(bodyL, ML, y); y += bodyL.length*5+7;
+            doc.setFillColor(0,0,0); doc.rect(ML, y, CW, 7, 'F');
+            doc.setFont('times','bold'); doc.setFontSize(8); doc.setTextColor(255,255,255);
+            doc.text('Maximum Price (BDT)', ML+CW*0.16, y+5, {align:'center'});
+            doc.text('Assessed Price (BDT)', ML+CW*0.5, y+5, {align:'center'});
+            doc.text('Forced Sale Value (20% Depr.)', ML+CW*0.83, y+5, {align:'center'});
+            doc.setTextColor(0,0,0); y += 7;
+            doc.setFillColor(255,255,255); doc.setDrawColor(0,0,0); doc.rect(ML, y, CW, 9, 'FD');
+            doc.setFont('times','bold'); doc.setFontSize(10); doc.setTextColor(0,0,0);
+            doc.text(v('max_price','\u2014'), ML+CW*0.16, y+6, {align:'center'});
+            doc.text(v('assessed_price','\u2014'), ML+CW*0.5, y+6, {align:'center'});
+            doc.text(v('forced_sale_value','\u2014'), ML+CW*0.83, y+6, {align:'center'});
+            y += 15;
+            doc.setFont('times','normal'); doc.setFontSize(9);
+            const closingL = doc.splitTextToSize('As per our understanding, the aforementioned valuation is fair and reasonable and our responsibility is restricted within the physical existence of the used vehicle and the value thereof.', CW);
+            doc.text(closingL, ML, y); y += closingL.length*5+10;
+            doc.text('With best regards,', ML, y); y += 24;
+            doc.setDrawColor(0,0,0);
+            doc.line(ML, y, ML+78, y); doc.line(ML+100, y, ML+178, y); y += 5;
+            doc.setFont('times','bold'); doc.setFontSize(9);
+            doc.text(v('valuer_1_name'), ML, y); doc.text(v('valuer_2_name'), ML+100, y); y += 6;
+            doc.setFont('times','normal'); doc.setFontSize(8);
+            doc.text(v('valuer_1_designation'), ML, y); doc.text(v('valuer_2_designation'), ML+100, y);
+            y += 12;
+            // Fix 3: Enclosure section at bottom of cover letter page
+            doc.setFont('times','italic'); doc.setFontSize(9); doc.setTextColor(0,0,0);
+            doc.text('Encl:', ML, y);
+            ['1. Annexure-I   : Detail Report',
+             '2. Annexure-II  : Registration Acknowledgement Slip Verification Report',
+             '3. Annexure-III : Photograph of Vehicle',
+             '4. Annexure-IV  : QR Code for Video of Vehicle',
+            ].forEach((line, i) => { doc.text(line, ML + 16, y + i * 5.5); });
+
+            // PAGE 3: VEHICLE & REGISTRATION
+            y = newPage();
+            y = sectionBar(y, 'Vehicle Details');
+            [['Manufacturing Company',v('manufacturer')],['Trim / Package',v('trim_package')],
+             ['Vehicle Model',v('vehicle_model')],['Manufacturing Year',v('manufacturing_year')],
+             ['Country of Origin',v('country_of_origin')],['Cubic Capacity (CC)',v('cubic_capacity')],
+             ['Engine Number',v('engine_number')],['Chassis Number',v('chassis_number')],
+             ['Color',v('color')],['Type of Vehicle',v('vehicle_type')],['Fuel Used',ar('fuel_used')]
+            ].forEach(([l,val])=>{ y = tRow(y,l,val); });
+            y += 5; if (y + 10 > CONTENT_BOTTOM) y = newPage();
+            y = sectionBar(y, 'Registration Details');
+            [['Current Owner Name',v('owner_name')],['Registration Number',v('registration_number')],
+             ['Registration ID',v('registration_id')],['Registration Date',dt('registration_date')],
+             ['Ownership Transfer Status',v('ownership_transfer')],['Hire Purchase',v('hire_purchase')],
+             ['Insurance Policy No. & Date',v('insurance_policy')],['Tax Clearance Certificate No.',v('tax_clearance_number')],
+             ['Tax Clearance Up To',dt('tax_clearance_date')],['Fitness Certificate No.',v('fitness_cert_number')],
+             ['Fitness Validity Up To',dt('fitness_validity')]
+            ].forEach(([l,val])=>{ y = tRow(y,l,val); });
+
+            // PAGE 4: INSPECTION
+            y = newPage();
+            y = sectionBar(y, 'Interior Inspection');
+            [['Transmission (Gear)','transmission',['Auto','Manual']],['Ignition (Start)','ignition',['Key','Push']],
+             ['Power Window','power_window',['Auto','Manual']],['Power Steering','power_steering',['Auto','Manual']],
+             ['Power Side Mirror','power_side_mirror',['Auto','Manual']],['Power Door Locks','power_door_locks',['Yes','No']],
+             ['Sound System','sound_system',['Built-in','Modified']],['Wooden Panel','wooden_panel',['Yes','No']],
+             ['Leather Interior','leather_interior',['Yes','No']],['Airbag','airbag',['Yes','No']],
+             ['Air Condition','air_condition',['Good','Fair','Moderate','Poor']],['Back Camera','back_camera',['Yes','No']],
+             ['Ambient Lighting','ambient_lighting',['Built-in','Modified']],
+            ].forEach(([lbl,field,opts]) => { y = checkRow(y, lbl, buildOpts(field, opts)); });
+            y = tRow(y, 'No. of Seats', v('num_seats'));
+            y = tRow(y, 'Total Mileage', v('total_mileage'));
+            y = tRow(y, 'Additional Accessories (Interior)', v('interior_accessories'));
+            y += 5; if (y + 10 > CONTENT_BOTTOM) y = newPage();
+            y = sectionBar(y, 'Exterior Inspection');
+            [['Body Condition','body_condition',['Good','Fair','Moderate','Poor']],
+             ['Engine Condition','engine_condition',['Good','Fair','Moderate','Poor']],
+             ['Tires Condition','tires_condition',['Good','Fair','Moderate','Poor']],
+             ['Paint Condition','paint_condition',['Good','Fair','Moderate','Poor']],
+             ['HID Lights','hid_lights',['Good','Fair','Moderate','Poor']],
+             ['Major Defects','major_defects',['Yes','No']],['Chassis Repaired','chassis_repaired',['Yes','No']],
+             ['Alloy Rim','alloy_rim',['Built-in','Modified']],['Sun Roof','sun_roof',['Yes','No']],
+             ['Glass','glass',['Original','Repaired']],['Fog Light','fog_light',['Yes','No']],
+             ['Dimension','dimension',['Long','Hatchback','Saloon','SUV']],['Major Accidental Hist','accidental_history',['Yes','No']],
+            ].forEach(([lbl,field,opts]) => { y = checkRow(y, lbl, buildOpts(field, opts)); });
+            y = tRow(y, 'Accidental Details', v('accidental_history_detail'));
+            y = tRow(y, 'Additional Accessories (Exterior)', v('exterior_accessories'));
+
+            // PAGE 5: ASSESSMENT + DISCLAIMER
+            y = newPage();
+            y = sectionBar(y, 'Overall Assessment');
+            [['Interior Condition','interior_condition',['Good','Average','Poor']],
+             ['Exterior Condition','exterior_condition',['Good','Average','Poor']],
+             ['Any Known Defects','known_defects',['Yes','No']],
+            ].forEach(([lbl,field,opts]) => { y = checkRow(y, lbl, buildOpts(field, opts)); });
+            y = tRow(y, 'Known Defects Detail', v('known_defects_detail'));
+            y += 5; if (y + 10 > CONTENT_BOTTOM) y = newPage();
+            y = sectionBar(y, 'Inspection Particulars');
+            [['Date of Inspection',dt('inspection_date')],['Inspection Time',v('inspection_time')],
+             ['Location',v('inspection_location')],['Contact Person',v('contact_person')],
+             ['Verification Agent',v('verification_agent')]
+            ].forEach(([l,val])=>{ y = tRow(y,l,val); });
+            y += 6; if (y + 10 > CONTENT_BOTTOM) y = newPage();
+            y = sectionBar(y, 'Disclaimer');
+            doc.setFont('times','normal'); doc.setFontSize(9); doc.setTextColor(0,0,0);
+            ['The valuation has been performed based on our physical inspection, verification, local market analysis and assessment to the best of our knowledge.',
+             "AMK's responsibility is limited to the valuation of the said vehicle only without considering any legal matter related to the vehicle and documents.",
+             'Except inspection and valuation of the said vehicle, AMK or any of its Officials has no interest directly or indirectly in any manner whatsoever in the subject matter of this report.',
+             "In case of Forced Sale Value, the rate is assumed on the basis of the vehicle's demand, price, marketability and other factors.",
+             'This report is not intended to absolve the concerned parties from their contractual obligations.'
+            ].forEach((d,i) => {
+                const lines = doc.splitTextToSize((i+1) + '. ' + d, CW-4);
+                if (y + lines.length*5 > CONTENT_BOTTOM) y = newPage();
+                doc.text(lines, ML+2, y); y += lines.length*5;
+            });
+
+            // PAGE 6: PHOTOS — Fix 1: 2 images per page, stacked vertically, same size, with border
+            const photos = Array.isArray(fd._photos) && fd._photos.length > 0 ? fd._photos : [];
+            if (photos.length > 0) {
+                const imgW = CW, imgH = 90, capH = 6, gapY = 10, perPage = 2;
+                for (let i = 0; i < photos.length; i++) {
+                    if (i % perPage === 0) {
+                        y = newPage();
+                        doc.setFont('times','bold'); doc.setFontSize(12); doc.setTextColor(0,0,0);
+                        doc.text(i === 0 ? 'VEHICLE PHOTOS' : 'VEHICLE PHOTOS (cont.)', PW/2, y+5, {align:'center'}); y += 12;
+                        doc.setFont('times','normal'); doc.setFontSize(9);
+                        doc.text('Ref: ' + v('file_reference_number') + ' | Reg: ' + v('registration_number'), PW/2, y, {align:'center'}); y += 8;
+                    }
+                    const slotOnPage = i % perPage;
+                    const iy = y + slotOnPage * (imgH + capH + gapY);
+                    try {
+                        const fmt = photos[i].dataUrl.startsWith('data:image/png') ? 'PNG' : 'JPEG';
+                        doc.addImage(photos[i].dataUrl, fmt, ML, iy, imgW, imgH);
+                    } catch(e) { doc.setFillColor(240,240,240); doc.rect(ML, iy, imgW, imgH, 'FD'); }
+                    doc.setDrawColor(0,0,0); doc.setLineWidth(0.4); doc.rect(ML, iy, imgW, imgH); doc.setLineWidth(0.2);
+                    const nm = photos[i].name.length > 40 ? photos[i].name.slice(0,38)+'...' : photos[i].name;
+                    doc.setFont('times','normal'); doc.setFontSize(8); doc.setTextColor(0,0,0);
+                    doc.text(nm, PW/2, iy + imgH + 4.5, {align:'center'});
+                }
+            }
+
+            // QR PAGE
+            const qr = fd._qr;
+            if (qr) {
+                y = newPage();
+                doc.setFont('times','bold'); doc.setFontSize(12); doc.setTextColor(0,0,0);
+                doc.text('QR CODE / DOCUMENT VERIFICATION', PW/2, y+5, {align:'center'}); y += 14;
+                doc.setFont('times','normal'); doc.setFontSize(9);
+                doc.text('Ref: ' + v('file_reference_number') + ' | Reg: ' + v('registration_number'), PW/2, y, {align:'center'}); y += 10;
+                doc.setFont('times','bold'); doc.setFontSize(10);
+                doc.text(v('qr_label','Document QR Code'), PW/2, y, {align:'center'}); y += 10;
+                const qrSize = 60, qrX = (PW - qrSize) / 2;
+                try { const qrFmt = qr.dataUrl.startsWith('data:image/png') ? 'PNG':'JPEG'; doc.addImage(qr.dataUrl, qrFmt, qrX, y, qrSize, qrSize); }
+                catch(e){ doc.setDrawColor(0,0,0); doc.rect(qrX, y, qrSize, qrSize); }
+                y += qrSize + 6;
+                if(fd.qr_url){ doc.setFont('times','normal'); doc.setFontSize(8); doc.setTextColor(0,0,0); doc.text(fd.qr_url, PW/2, y, {align:'center', maxWidth:CW}); y += 8; }
+                y += 6;
+                doc.setFillColor(0,0,0); doc.rect(ML, y, CW, 7, 'F');
+                doc.setFont('times','bold'); doc.setFontSize(10); doc.setTextColor(255,255,255);
+                doc.text('HOW TO SCAN THIS QR CODE', PW/2, y+5, {align:'center'});
+                doc.setTextColor(0,0,0); y += 12;
+                ['1. Open the Camera app on your smartphone (iPhone or Android).',
+                 '2. Point the camera at the QR code above. No need to take a photo — just hold steady.',
+                 '3. A notification or link will appear on your screen. Tap it to open the document.',
+                 '4. Alternatively, open any QR code scanner app and scan the code to access the document.',
+                 '5. The link will direct you to the official BRTA verification page or the attached document.',
+                ].forEach(line => {
+                    doc.setFont('times','normal'); doc.setFontSize(9);
+                    const lines = doc.splitTextToSize(line, CW - 4);
+                    doc.text(lines, ML+2, y); y += lines.length * 5.5;
+                });
+                y += 4;
+                const noteText = 'Note: This QR code is linked to the official vehicle verification document. Please ensure you have a stable internet connection before scanning.';
+                const noteLines = doc.splitTextToSize(noteText, CW - 8);
+                doc.setDrawColor(0,0,0); doc.setFillColor(240,240,240);
+                doc.rect(ML, y, CW, noteLines.length*5.5 + 6, 'FD');
+                doc.setFont('times','italic'); doc.setFontSize(8); doc.setTextColor(0,0,0);
+                doc.text(noteLines, ML+4, y+4.5);
+            }
+
+            const filename = 'Valuation_' + (v('registration_number')||v('brta_registration_no')||'Report') + '.pdf';
+            doc.save(filename);
+            UI.showToast('PDF downloaded!', 'success');
+        } catch(err) { console.error('PDF error:', err); UI.showToast('PDF failed: ' + err.message, 'error'); }
+    }
+};
+</script>
+<script>
+let currentUserId = null;
+let allSubmissions = [];
+
+async function init() {
+    const session = await Auth.requireAuth();
+    if (!session) return;
+    currentUserId = session.user.id;
+    const profile = await Auth.getProfile(session.user.id);
+    document.getElementById('user-name').textContent = profile.full_name || profile.email;
+    document.getElementById('banner-name').textContent = (profile.full_name || profile.email).split(' ')[0];
+    document.getElementById('avatar-initial').textContent = (profile.full_name || profile.email)[0].toUpperCase();
+    if (profile.role === 'admin') document.getElementById('admin-link').style.display = 'inline-flex';
+    await loadSubmissions();
+}
+
+async function loadSubmissions() {
+    const container = document.getElementById('submissions-list');
+    container.innerHTML = '<div class="loading-spinner"></div>';
+    try {
+        const { data, error } = await db.from('submissions').select('*').eq('user_id', currentUserId).order('updated_at', { ascending: false });
+        if (error) throw error;
+        allSubmissions = data;
+        renderCards(data);
+    } catch(err) { container.innerHTML = `<div class="error-msg">Failed to load: ${err.message}</div>`; }
+}
+
+function renderCards(list) {
+    const container = document.getElementById('submissions-list');
+    if (list.length === 0) {
+        container.innerHTML = `<div class="empty-state" style="grid-column:1/-1">
+            <div class="empty-icon">📋</div><h3>No reports yet</h3>
+            <p>Start your first car valuation report.</p>
+            <a href="form.html" class="btn btn-primary" style="margin-top:0.5rem">Start New Report</a>
+        </div>`;
+        return;
+    }
+    container.innerHTML = list.map(sub => {
+        const fd = sub.form_data || {};
+        const name  = [fd.manufacturer, fd.vehicle_model].filter(Boolean).join(' ') || 'Untitled Vehicle';
+        const reg   = fd.registration_number || '—';
+        const owner = fd.owner_name || '—';
+        const date  = new Date(sub.updated_at).toLocaleDateString('en-GB', {day:'2-digit',month:'short',year:'numeric'});
+        const sc    = {draft:'status-draft', submitted:'status-submitted', reviewed:'status-reviewed'}[sub.status]||'';
+        const sl    = sub.status.charAt(0).toUpperCase()+sub.status.slice(1);
+        return `<div class="submission-card">
+            <div class="card-header"><div class="card-title">${name}</div><span class="status-badge ${sc}">${sl}</span></div>
+            <div class="card-meta"><span>Owner: ${owner}</span><span>Reg: ${reg}</span></div>
+            <div class="card-meta" style="margin-bottom:0.5rem"><span>Updated: ${date}</span></div>
+            <div class="card-actions" style="margin-top:1rem">
+                <a href="form.html?id=${sub.id}" class="btn btn-sm btn-outline">${sub.status==='draft'?'✏️ Continue':'👁 View'}</a>
+                <button class="btn btn-sm btn-primary" onclick="downloadReport('${sub.id}')">📄 PDF</button>
+                ${sub.status==='draft'?`<button class="btn btn-sm btn-danger" onclick="deleteSubmission('${sub.id}')">🗑️</button>`:''}
+            </div>
+        </div>`;
+    }).join('');
+}
+
+function filterBy(f, btn) {
+    document.querySelectorAll('.filter-tab').forEach(b=>b.classList.remove('active'));
+    btn.classList.add('active');
+    renderCards(f==='all' ? allSubmissions : allSubmissions.filter(s=>s.status===f));
+}
+
+async function downloadReport(id) {
+    const sub = allSubmissions.find(s=>s.id===id);
+    if (sub) { ReportGenerator.generate(sub.form_data); return; }
+    const { data } = await db.from('submissions').select('*').eq('id', id).single();
+    ReportGenerator.generate(data?.form_data);
+}
+
+async function deleteSubmission(id) {
+    if (!confirm('Delete this draft?')) return;
+    try {
+        const { error } = await db.from('submissions').delete().eq('id', id);
+        if (error) throw error;
+        UI.showToast('Draft deleted', 'success');
+        await loadSubmissions();
+    } catch(err) { UI.showToast('Error: '+err.message, 'error'); }
+}
+
+document.addEventListener('DOMContentLoaded', init);
+</script>
+</body>
+</html>
