@@ -474,16 +474,19 @@ function renderCards(list) {
     }
     container.innerHTML = list.map(sub => {
         const fd = sub.form_data || {};
-        const name  = [fd.manufacturer, fd.vehicle_model].filter(Boolean).join(' ') || 'Untitled Vehicle';
-        const reg   = fd.registration_number || '—';
-        const owner = fd.owner_name || '—';
-        const date  = new Date(sub.updated_at).toLocaleDateString('en-GB', {day:'2-digit',month:'short',year:'numeric'});
-        const sc    = {draft:'status-draft', submitted:'status-submitted', reviewed:'status-reviewed'}[sub.status]||'';
-        const sl    = sub.status.charAt(0).toUpperCase()+sub.status.slice(1);
+        const fileRef    = fd.file_reference_number || 'Untitled Report';
+        const date       = new Date(sub.updated_at).toLocaleDateString('en-GB', {day:'2-digit',month:'short',year:'numeric'});
+        const sc         = {draft:'status-draft', submitted:'status-submitted', reviewed:'status-reviewed'}[sub.status]||'';
+        const sl         = sub.status.charAt(0).toUpperCase()+sub.status.slice(1);
+        const letterRef  = fd.letter_ref || '—';
+        const referredBy = fd.referred_by || '—';
         return `<div class="submission-card">
-            <div class="card-header"><div class="card-title">${name}</div><span class="status-badge ${sc}">${sl}</span></div>
-            <div class="card-meta"><span>Owner: ${owner}</span><span>Reg: ${reg}</span></div>
-            <div class="card-meta" style="margin-bottom:0.5rem"><span>Updated: ${date}</span></div>
+            <div class="card-header"><div class="card-title">${fileRef}</div><span class="status-badge ${sc}">${sl}</span></div>
+            <div class="card-meta" style="gap:0.4rem;flex-direction:column">
+                <span style="display:flex;gap:0.4rem;align-items:center"><span style="color:var(--gray-500);font-size:0.7rem;text-transform:uppercase;letter-spacing:.04em;min-width:90px">Letter Ref</span><span style="font-weight:600;font-size:0.82rem">${letterRef}</span></span>
+                <span style="display:flex;gap:0.4rem;align-items:center"><span style="color:var(--gray-500);font-size:0.7rem;text-transform:uppercase;letter-spacing:.04em;min-width:90px">Referred By</span><span style="font-weight:600;font-size:0.82rem">${referredBy}</span></span>
+            </div>
+            <div class="card-meta" style="margin-top:0.4rem"><span>Updated: ${date}</span></div>
             <div class="card-actions" style="margin-top:1rem">
                 <a href="form.html?id=${sub.id}" class="btn btn-sm btn-outline">${sub.status==='draft'?'✏️ Continue':'👁 View'}</a>
                 <button class="btn btn-sm btn-primary" onclick="downloadReport('${sub.id}')">📄 PDF</button>
