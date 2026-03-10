@@ -179,33 +179,54 @@ const ReportGenerator = {
             drawHeaderFooter();
             let y = MT;
 
-            // PAGE 1: COVER
-            doc.setFont('times','bold'); doc.setFontSize(12); doc.setTextColor(0,0,0);
-            doc.text('INSPECTION & VALUATION REPORT', PW/2, y+5, {align:'center'}); y += 9;
-            doc.setFont('times','normal'); doc.setFontSize(9);
-            doc.text('Used / Pre-Owned Vehicle', PW/2, y+4, {align:'center'}); y += 12;
-            [['Reference Account Name', v('reference_account_name')],['File Reference Number', v('file_reference_number')],
-             ['Referred By', v('referred_by')],['Date of Inspection', dt('date_of_inspection')]
-            ].forEach(([lbl,val]) => {
-                doc.setFont('times','bold'); doc.setFontSize(9); doc.text(lbl, ML, y);
-                doc.setFont('times','normal'); doc.text(': ' + val, ML+68, y); y += 6;
+            // PAGE 1: COVER — styled to match reference image
+            const titleY = 110;
+            doc.setFont('times','bold'); doc.setFontSize(16); doc.setTextColor(0,0,0);
+            doc.text('INSPECTION & VALUATION REPORT OF', PW/2, titleY, {align:'center'});
+            doc.text('USED/PRE-OWNED VEHICLE', PW/2, titleY + 10, {align:'center'});
+
+            let ry = titleY + 30;
+            const refData = [
+                ['Reference Account Name', v('reference_account_name')],
+                ['File Reference Number',  v('file_reference_number')],
+                ['Referred By',            v('referred_by')],
+                ['Date of Inspection',     dt('date_of_inspection')]
+            ];
+            const refLabelW = 52, refColonW = 4, refValueW = 60;
+            const refBlockW = refLabelW + refColonW + refValueW;
+            const refStartX = (PW - refBlockW) / 2;
+            refData.forEach(([lbl, val]) => {
+                doc.setFont('times','normal'); doc.setFontSize(9); doc.setTextColor(0,0,0);
+                doc.text(lbl, refStartX, ry);
+                doc.text(':', refStartX + refLabelW, ry);
+                doc.text(String(val), refStartX + refLabelW + refColonW + 1, ry);
+                ry += 6;
             });
-            y += 4;
-            // Fix 4: Dynamic box height to prevent recipient address overflow
+
+            const boxTop = 220;
             const rNameLines = doc.splitTextToSize(v('recipient_name'), CW/2-14);
             const addrL = doc.splitTextToSize(v('recipient_address'), CW/2-14);
-            const toContentLines = rNameLines.length + addrL.length;
-            const boxH = Math.max(36, 18 + toContentLines * 5);
+            const toRows = rNameLines.length + addrL.length;
+            const boxH = Math.max(40, 14 + Math.max(6, toRows) * 5.5);
             doc.setDrawColor(0,0,0); doc.setFillColor(255,255,255);
-            doc.rect(ML, y, CW/2-2, boxH, 'FD'); doc.rect(ML+CW/2+2, y, CW/2-2, boxH, 'FD');
-            doc.setFont('times','bold'); doc.setFontSize(9); doc.text('Submitted by:', ML+3, y+6);
-            doc.setFont('times','normal'); doc.text('AMK Associates Limited', ML+3, y+12);
-            doc.text('68, Khilgaon Chowdhurypara (4th floor)', ML+3, y+18);
-            doc.text('DIT Road, Rampura, Dhaka-1219', ML+3, y+24);
-            doc.setFont('times','bold'); doc.setFontSize(9); doc.text('Submitted to:', ML+CW/2+5, y+6);
-            rNameLines.forEach((line, i) => { doc.text(line, ML+CW/2+5, y+12+i*5); });
-            doc.setFont('times','normal');
-            addrL.forEach((line, i) => { doc.text(line, ML+CW/2+5, y+12+rNameLines.length*5+i*5); });
+            doc.rect(ML, boxTop, CW/2-2, boxH, 'FD'); doc.rect(ML+CW/2+2, boxTop, CW/2-2, boxH, 'FD');
+
+            let by = boxTop + 6;
+            doc.setFont('times','bold'); doc.setFontSize(9); doc.text('Submitted by:', ML+3, by); by += 6;
+            doc.setFont('times','bold'); doc.text('AMK Associates Limited', ML+3, by); by += 5.5;
+            doc.setFont('times','normal'); doc.setFontSize(8.5);
+            doc.text('68, Khilgaon Chowdhury Para (4th floor)', ML+3, by); by += 5;
+            doc.text('DIT Road Rampura, Dhaka-1219', ML+3, by); by += 5;
+            doc.text('E-mail: www.amkassociatesbd@gmail.com', ML+3, by); by += 5;
+            doc.text('Web: www.amkassociatesbd.com', ML+3, by); by += 5;
+            doc.text('Contact: 01841132714', ML+3, by);
+
+            const rx = ML + CW/2 + 5;
+            let ty = boxTop + 6;
+            doc.setFont('times','bold'); doc.setFontSize(9); doc.text('Submitted to:', rx, ty); ty += 6;
+            rNameLines.forEach(line => { doc.text(line, rx, ty); ty += 5.5; });
+            doc.setFont('times','normal'); doc.setFontSize(8.5);
+            addrL.forEach(line => { doc.text(line, rx, ty); ty += 5; });
 
             // PAGE 2: COVER LETTER
             y = newPage();
@@ -223,18 +244,27 @@ const ReportGenerator = {
             const body = 'Pursuant to your communication through ' + v('comm_medium') + ', dated: ' + dt('comm_date') + ' by ' + v('comm_person') + ', we, AMK Associates Limited has conducted the inspection and valuation of the referred vehicle, summary of which is as per following:';
             const bodyL = doc.splitTextToSize(body, CW);
             doc.text(bodyL, ML, y); y += bodyL.length*5+7;
-            doc.setFillColor(0,0,0); doc.rect(ML, y, CW, 7, 'F');
-            doc.setFont('times','bold'); doc.setFontSize(8); doc.setTextColor(255,255,255);
-            doc.text('Maximum Price (BDT)', ML+CW*0.16, y+5, {align:'center'});
-            doc.text('Assessed Price (BDT)', ML+CW*0.5, y+5, {align:'center'});
-            doc.text('Forced Sale Value (20% Depr.)', ML+CW*0.83, y+5, {align:'center'});
-            doc.setTextColor(0,0,0); y += 7;
-            doc.setFillColor(255,255,255); doc.setDrawColor(0,0,0); doc.rect(ML, y, CW, 9, 'FD');
-            doc.setFont('times','bold'); doc.setFontSize(10); doc.setTextColor(0,0,0);
-            doc.text(v('max_price','\u2014'), ML+CW*0.16, y+6, {align:'center'});
-            doc.text(v('assessed_price','\u2014'), ML+CW*0.5, y+6, {align:'center'});
-            doc.text(v('forced_sale_value','\u2014'), ML+CW*0.83, y+6, {align:'center'});
-            y += 15;
+            doc.setFont('times','italic'); doc.setFontSize(8); doc.setTextColor(0,0,0);
+            doc.text('Amount in BDT', ML + CW, y, {align:'right'}); y += 4;
+            const col3W = CW / 3;
+            const hdrH = 16;
+            doc.setDrawColor(0,0,0); doc.setFillColor(255,255,255);
+            doc.rect(ML, y, col3W, hdrH, 'FD'); doc.rect(ML+col3W, y, col3W, hdrH, 'FD'); doc.rect(ML+col3W*2, y, col3W, hdrH, 'FD');
+            doc.setFont('times','bold'); doc.setFontSize(9); doc.setTextColor(0,0,0);
+            doc.text('Maximum Price',        ML+col3W*0.5, y+7,  {align:'center'});
+            doc.text('Assessed Price',       ML+col3W*1.5, y+7,  {align:'center'});
+            doc.text('Forced Sale Value on', ML+col3W*2.5, y+4,  {align:'center'});
+            doc.text('Assessed Price',       ML+col3W*2.5, y+9,  {align:'center'});
+            doc.text('(20% Depreciation)',   ML+col3W*2.5, y+14, {align:'center'});
+            y += hdrH;
+            const valH = 10;
+            doc.setFillColor(255,255,255);
+            doc.rect(ML, y, col3W, valH, 'FD'); doc.rect(ML+col3W, y, col3W, valH, 'FD'); doc.rect(ML+col3W*2, y, col3W, valH, 'FD');
+            doc.setFont('times','normal'); doc.setFontSize(10); doc.setTextColor(0,0,0);
+            doc.text(v('max_price','\u2014'),         ML+col3W*0.5, y+6.5, {align:'center'});
+            doc.text(v('assessed_price','\u2014'),    ML+col3W*1.5, y+6.5, {align:'center'});
+            doc.text(v('forced_sale_value','\u2014'), ML+col3W*2.5, y+6.5, {align:'center'});
+            y += valH + 8;
             doc.setFont('times','normal'); doc.setFontSize(9);
             const closingL = doc.splitTextToSize('As per our understanding, the aforementioned valuation is fair and reasonable and our responsibility is restricted within the physical existence of the used vehicle and the value thereof.', CW);
             doc.text(closingL, ML, y); y += closingL.length*5+10;
