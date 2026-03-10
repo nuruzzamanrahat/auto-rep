@@ -30,9 +30,31 @@ const ReportGenerator = {
 
     v(fd, key, fb = '') { return fd[key] || fb; },
 
+    // Renders all options for a checkbox group, showing ☑ for selected, ☐ for unselected
+    checkboxRow(fd, label, key, options) {
+        const selected = Array.isArray(fd[key]) ? fd[key] : (fd[key] ? [fd[key]] : []);
+        const cells = options.map(opt => {
+            const symbol = selected.includes(opt) ? '&#9745;' : '&#9744;';
+            return `<span style="margin-right:10px;white-space:nowrap">${symbol} ${opt}</span>`;
+        }).join('');
+        return `<tr>
+            <th style="width:35%">${label}</th>
+            <td style="width:5px">:</td>
+            <td>${cells}</td>
+        </tr>`;
+    },
+
     buildReportHTML(fd) {
         const v = (k, f='') => this.v(fd, k, f);
         const arr = (k) => Array.isArray(fd[k]) ? fd[k].join(', ') : (fd[k] || '');
+        const cb = (label, key, options) => this.checkboxRow(fd, label, key, options);
+
+        // Option sets (must match form.html definitions exactly)
+        const twoOpts  = ['Yes', 'No'];
+        const condOpts = ['Good', 'Fair', 'Moderate', 'Poor'];
+        const autoMan  = ['Auto', 'Manual'];
+        const builtMod = ['Built-in', 'Modified'];
+        const origRep  = ['Original', 'Repaired'];
 
         const style = `
         <style>
@@ -143,25 +165,40 @@ const ReportGenerator = {
 
         <div class="sheet">
             <h2>Vehicle Inspection Details</h2>
-            <table><tr><th colspan="3">Interior</th></tr>${rows([
-                ['Transmission','transmission',true],['Ignition','ignition',true],
-                ['Power Window','power_window',true],['Power Steering','power_steering',true],
-                ['Power Side Mirror','power_side_mirror',true],['Power Door Locks','power_door_locks',true],
-                ['Sound System','sound_system',true],['Wooden Panel','wooden_panel',true],
-                ['Leather Interior','leather_interior',true],['Airbag','airbag',true],
-                ['Air Condition','air_condition',true],['Back Camera','back_camera',true],
-                ['Ambient Lighting','ambient_lighting',true],
-                ['No. of Seats','num_seats',false],['Total Mileage','total_mileage',false],
-            ])}</table>
-            <table style="margin-top:8px"><tr><th colspan="3">Exterior</th></tr>${rows([
-                ['Body Condition','body_condition',true],['Engine Condition','engine_condition',true],
-                ['Tires Condition','tires_condition',true],['Paint Condition','paint_condition',true],
-                ['HID Lights','hid_lights',true],['Major Defects','major_defects',true],
-                ['Chassis Repaired','chassis_repaired',true],['Alloy Rim','alloy_rim',true],
-                ['Sun Roof','sun_roof',true],['Glass','glass',true],
-                ['Fog Light','fog_light',true],['Dimension','dimension',true],
-                ['Major Accidental History','accidental_history',true],
-            ])}</table>
+            <table>
+                <tr><th colspan="3">Interior</th></tr>
+                ${cb('Transmission (Gear)',  'transmission',      autoMan)}
+                ${cb('Ignition (Start)',      'ignition',          ['Push','Key'])}
+                ${cb('Power Window',          'power_window',      autoMan)}
+                ${cb('Power Steering',        'power_steering',    autoMan)}
+                ${cb('Power Side Mirror',     'power_side_mirror', autoMan)}
+                ${cb('Power Door Locks',      'power_door_locks',  twoOpts)}
+                ${cb('Sound System',          'sound_system',      builtMod)}
+                ${cb('Wooden Panel',          'wooden_panel',      twoOpts)}
+                ${cb('Leather Interior',      'leather_interior',  twoOpts)}
+                ${cb('Airbag',               'airbag',            twoOpts)}
+                ${cb('Air Condition',         'air_condition',     condOpts)}
+                ${cb('Back Camera',           'back_camera',       twoOpts)}
+                ${cb('Ambient Lighting',      'ambient_lighting',  builtMod)}
+                <tr><th style="width:35%">No. of Seats</th><td style="width:5px">:</td><td>${v('num_seats')}</td></tr>
+                <tr><th style="width:35%">Total Mileage</th><td style="width:5px">:</td><td>${v('total_mileage')}</td></tr>
+            </table>
+            <table style="margin-top:8px">
+                <tr><th colspan="3">Exterior</th></tr>
+                ${cb('Body Condition',        'body_condition',    condOpts)}
+                ${cb('Engine Condition',      'engine_condition',  condOpts)}
+                ${cb('Tires Condition',       'tires_condition',   condOpts)}
+                ${cb('Paint Condition',       'paint_condition',   condOpts)}
+                ${cb('HID Lights',           'hid_lights',        condOpts)}
+                ${cb('Major Defects',         'major_defects',     twoOpts)}
+                ${cb('Chassis Repaired',      'chassis_repaired',  twoOpts)}
+                ${cb('Alloy Rim',            'alloy_rim',         builtMod)}
+                ${cb('Sun Roof',             'sun_roof',          twoOpts)}
+                ${cb('Glass',               'glass',             origRep)}
+                ${cb('Fog Light',           'fog_light',         twoOpts)}
+                ${cb('Dimension',           'dimension',         ['Long','Hatchback','Saloon','SUV'])}
+                ${cb('Major Accidental History','accidental_history',twoOpts)}
+            </table>
         </div>
 
         <div class="sheet">
