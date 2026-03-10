@@ -171,23 +171,25 @@ const ReportGenerator = {
             };
 
             const checkRow = (y, rowLabel, options) => {
-                const rowH = 6.5, col1 = 74;
+                const rowH = 7, col1 = 74, boxSz = 3.2;
                 if (y + rowH > CONTENT_BOTTOM) { y = newPage(); }
                 doc.setDrawColor(0,0,0); doc.setFillColor(240,240,240);
                 doc.rect(ML, y, col1, rowH, 'FD');
                 doc.setFont('times','bold'); doc.setFontSize(9); doc.setTextColor(0,0,0);
-                doc.text(String(rowLabel), ML+1.5, y+4.2);
-                const checkAreaW = CW - col1 - 4;
-                doc.setFillColor(255,255,255); doc.rect(ML+col1, y, checkAreaW + 4, rowH, 'FD');
+                doc.text(String(rowLabel), ML+1.5, y + rowH/2 + 1.2);
+                const checkAreaW = CW - col1;
+                doc.setFillColor(255,255,255); doc.rect(ML+col1, y, checkAreaW, rowH, 'FD');
                 const optW = checkAreaW / options.length;
-                const x = ML + col1 + 4;
                 options.forEach((opt, i) => {
-                    const cx = x + i * optW + 1, textY = y + rowH - 1.8;
-                    const symbol = opt.checked ? '\u2611' : '\u2610';
-                    doc.setFont('zapfdingbats','normal'); doc.setFontSize(9); doc.setTextColor(0,0,0);
-                    doc.text(symbol, cx, textY);
+                    const ox = ML + col1 + i * optW + 2, oy = y + (rowH - boxSz) / 2;
+                    doc.setDrawColor(0,0,0); doc.setFillColor(255,255,255);
+                    doc.rect(ox, oy, boxSz, boxSz, 'FD');
+                    if (opt.checked) {
+                        doc.setFont('times','bold'); doc.setFontSize(7); doc.setTextColor(0,0,0);
+                        doc.text('\u2713', ox + 0.3, oy + boxSz - 0.5);
+                    }
                     doc.setFont('times','normal'); doc.setFontSize(8); doc.setTextColor(0,0,0);
-                    doc.text(String(opt.label), cx + 4.5, textY);
+                    doc.text(String(opt.label), ox + boxSz + 1.2, oy + boxSz - 0.4);
                 });
                 return y + rowH;
             };
