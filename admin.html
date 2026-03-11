@@ -171,17 +171,20 @@ const ReportGenerator = {
             };
 
             const checkRow = (y, rowLabel, options) => {
-                const rowH = 7, col1 = 74, boxSz = 3.2;
+                const rowH = 7, col1 = 74, colonW = 4, boxSz = 3.2;
                 if (y + rowH > CONTENT_BOTTOM) { y = newPage(); }
                 doc.setDrawColor(0,0,0); doc.setFillColor(240,240,240);
                 doc.rect(ML, y, col1, rowH, 'FD');
                 doc.setFont('times','bold'); doc.setFontSize(10); doc.setTextColor(0,0,0);
                 doc.text(String(rowLabel), ML+1.5, y + rowH/2 + 1.2);
-                const checkAreaW = CW - col1;
-                doc.setFillColor(255,255,255); doc.rect(ML+col1, y, checkAreaW, rowH, 'FD');
+                doc.setFillColor(255,255,255); doc.rect(ML+col1, y, colonW, rowH, 'FD');
+                doc.setFont('times','normal'); doc.setFontSize(10);
+                doc.text(':', ML+col1+1.2, y + rowH/2 + 1.2);
+                const checkAreaW = CW - col1 - colonW;
+                doc.setFillColor(255,255,255); doc.rect(ML+col1+colonW, y, checkAreaW, rowH, 'FD');
                 const optW = checkAreaW / options.length;
                 options.forEach((opt, i) => {
-                    const ox = ML + col1 + i * optW + 2, oy = y + (rowH - boxSz) / 2;
+                    const ox = ML + col1 + colonW + i * optW + 2, oy = y + (rowH - boxSz) / 2;
                     doc.setDrawColor(0,0,0); doc.setFillColor(255,255,255);
                     doc.rect(ox, oy, boxSz, boxSz, 'FD');
                     if (opt.checked) {
@@ -292,7 +295,9 @@ const ReportGenerator = {
             y += valH + 8;
             doc.setFont('times','normal'); doc.setFontSize(10);
             const closingL = doc.splitTextToSize('As per our understanding, the aforementioned valuation is fair and reasonable and our responsibility is restricted within the physical existence of the used vehicle and the value thereof.', CW);
-            doc.text(closingL, ML, y); y += closingL.length*5+10;
+            doc.text(closingL, ML, y); y += closingL.length*5+6;
+            const closing2L = doc.splitTextToSize('The report has been prepared based on our physical inspection, verification, necessary documents as provided by concern office/individual, local market analysis and assessment to the best of our knowledge.\n\nFor any query, please feel free to contact us.', CW);
+            doc.text(closing2L, ML, y); y += closing2L.length*5+10;
             doc.text('With best regards,', ML, y); y += 24;
             doc.setDrawColor(0,0,0);
             doc.line(ML, y, ML+78, y); doc.line(ML+100, y, ML+178, y); y += 5;
@@ -312,6 +317,11 @@ const ReportGenerator = {
 
             // PAGE 3: VEHICLE & REGISTRATION
             y = newPage();
+            doc.setFont('times','italic'); doc.setFontSize(10); doc.setTextColor(0,0,0);
+            doc.text('Annexure-I', ML + CW, y, {align:'right'}); y += 7;
+            doc.setFont('times','bold'); doc.setFontSize(12);
+            doc.text('Detail Report', PW/2, y, {align:'center'}); y += 10;
+            doc.setFont('times','normal'); doc.setFontSize(10);
             y = sectionBar(y, 'Vehicle Details');
             [['Manufacturing Company',v('manufacturer')],['Trim / Package',v('trim_package')],
              ['Vehicle Model',v('vehicle_model')],['Manufacturing Year',v('manufacturing_year')],
@@ -372,7 +382,7 @@ const ReportGenerator = {
             }
             y += 5; if (y + 10 > CONTENT_BOTTOM) y = newPage();
             y = sectionBar(y, 'Inspection Particulars');
-            [['Date of Inspection',dt('inspection_date')],['Inspection Time',v('inspection_time')],
+            [['Date of Inspection',dt('inspection_date')],['Inspection Time',(()=>{ const t=v('inspection_time'); if(!t||!t.includes(':')) return t||'—'; const [h,m]=t.split(':'); const hr=parseInt(h); return (hr%12||12)+':'+m+(hr<12?' AM':' PM'); })()],
              ['Location',v('inspection_location')],['Contact Person',v('contact_person')],
              ['Verification Agent',v('verification_agent')]
             ].forEach(([l,val])=>{ y = tRow(y,l,val); });
@@ -391,10 +401,146 @@ const ReportGenerator = {
                 doc.text(lines, ML+2, y); y += lines.length*5 + 2;
             });
 
+            // PAGE 6: ANNEXURE-II — Registration Details Report
+            y = newPage();
+            doc.setFont('times','italic'); doc.setFontSize(10); doc.setTextColor(0,0,0);
+            doc.text('Annexure-II', ML + CW, y, {align:'right'}); y += 7;
+            doc.setFont('times','bold'); doc.setFontSize(12); doc.setTextColor(0,0,0);
+            doc.text('Registration Details Report', PW/2, y, {align:'center'}); y += 8;
+            doc.setFont('times','normal'); doc.setFontSize(10);
+            const rh = 8; // base row height
+            // CW/3 grid used for ALL 3 tables — vertical lines at ML, ML+C3, ML+2*C3, ML+CW
+            const C3 = Math.floor(CW / 3), C3r = CW - C3*2;
+            const FS = 9; // font size for table content (smaller to prevent overflow)
+            doc.setFontSize(FS);
+
+            // ── smart lv: auto-height cell pair, returns actual height used ──
+            const lvH = (x, cy, lw, vw, h, label, val) => {
+                const lblLines = doc.splitTextToSize(label, lw-2);
+                const valLines = doc.splitTextToSize(val||'', vw-2);
+                const needed = Math.max(lblLines.length, valLines.length) * 4.5 + 3;
+                const ch = Math.max(h, needed);
+                doc.setDrawColor(0,0,0); doc.setLineWidth(0.2);
+                doc.rect(x, cy, lw, ch);
+                doc.setFont('times','bold'); doc.setFontSize(FS);
+                doc.text(lblLines, x+1.5, cy+4);
+                doc.rect(x+lw, cy, vw, ch);
+                doc.setFont('times','normal'); doc.setFontSize(FS);
+                doc.text(valLines, x+lw+1.5, cy+4);
+                return ch;
+            };
+            // ── row of 3 cells, returns max height ──
+            const row3 = (lw, pairs, minH) => {
+                const colWs = [C3, C3, C3r];
+                // calculate max height needed across all 3 cells
+                let maxH = minH;
+                pairs.forEach(([lbl, val], i) => {
+                    const vw = colWs[i] - lw;
+                    const lblL = doc.splitTextToSize(lbl, lw-2).length;
+                    const valL = doc.splitTextToSize(val||'', vw-2).length;
+                    const needed = Math.max(lblL, valL) * 4.5 + 3;
+                    if (needed > maxH) maxH = needed;
+                });
+                let x = ML;
+                pairs.forEach(([lbl, val], i) => {
+                    lvH(x, y, lw, colWs[i]-lw, maxH, lbl, val);
+                    x += colWs[i];
+                });
+                return maxH;
+            };
+            // ── hdr: full-width header ──
+            const hdr = (w, label) => {
+                doc.setDrawColor(0,0,0); doc.setLineWidth(0.2);
+                doc.rect(ML, y, w, rh);
+                doc.setFont('times','bold'); doc.setFontSize(FS);
+                doc.text(label, ML+1.5, y+5);
+            };
+            const LW1 = 22; // label width for Table 1 (3-col)
+            const LW2 = 24; // label width for Tables 2 & 3
+
+            // ════ TABLE 1: Registration Info — 3-column grid ════
+            // Header row: [Registration Info — 2 cols] [Current Authority lbl | val — 1 col]
+            hdr(CW, 'Registration Info');
+            // draw Current Authority on right side of header row
+            doc.setDrawColor(0,0,0); doc.setLineWidth(0.2);
+            doc.rect(ML+C3*2, y, LW1, rh);
+            doc.setFont('times','bold'); doc.setFontSize(FS);
+            doc.text('Current\nAuthority', ML+C3*2+1.5, y+2.5);
+            doc.rect(ML+C3*2+LW1, y, C3r-LW1, rh);
+            doc.setFont('times','normal'); doc.setFontSize(FS);
+            doc.text(doc.splitTextToSize(v('brta_authority'), C3r-LW1-2), ML+C3*2+LW1+1.5, y+3.5);
+            // override outer rect with full-width for left label
+            doc.setFont('times','bold'); doc.setFontSize(FS);
+            doc.text('Registration Info', ML+1.5, y+5);
+            y += rh;
+
+            // Row 1: Reg Id | val | Reg No | val | Prev Reg No | val
+            let h1 = row3(LW1, [
+                ['Registration\nId',  v('brta_registration_id')],
+                ['Registration\nNo',  v('brta_registration_no')],
+                ['Previous\nReg No',  v('brta_prev_reg_no')]
+            ], rh*2); y += h1;
+
+            // Row 2: App Status | val | Reg Date | val | Hire | val
+            let h2 = row3(LW1, [
+                ['Application\nStatus', v('brta_app_status')],
+                ['Registration\nDate',  dt('brta_reg_date')],
+                ['Hire',                v('brta_hire')]
+            ], rh*2); y += h2;
+
+            // Row 3: Ownership Type | val | Hire Purchase | val | Bank Name | val
+            let h3 = row3(LW1, [
+                ['Ownership\nType',  v('brta_ownership_type')],
+                ['Hire\nPurchase',   v('brta_hire_purchase')],
+                ['Bank Name',        v('brta_bank_name')]
+            ], rh*2); y += h3;
+
+            // Row 4: Bank Address (full width)
+            const baLines = doc.splitTextToSize(v('brta_bank_address')||'', CW - LW1 - 2);
+            const baH = Math.max(rh, baLines.length * 4.5 + 3);
+            doc.setDrawColor(0,0,0); doc.setLineWidth(0.2);
+            doc.rect(ML, y, LW1, baH);
+            doc.setFont('times','bold'); doc.setFontSize(FS);
+            doc.text('Bank Address', ML+1.5, y+4);
+            doc.rect(ML+LW1, y, CW-LW1, baH);
+            doc.setFont('times','normal'); doc.setFontSize(FS);
+            doc.text(baLines, ML+LW1+1.5, y+4);
+            y += baH + 4;
+
+            // ════ TABLE 2: Vehicle Info — 3-column grid ════
+            hdr(CW, 'Vehicle Info'); y += rh;
+
+            y += row3(LW2, [['Chassis No', v('brta_chassis_no')],['Engine No', v('brta_engine_no')],['Manufacture\nYear', v('brta_mfg_year')]], rh*2);
+            y += row3(LW2, [['Vehicle Class', v('brta_veh_class')],['Vehicle Type', v('brta_veh_type')],['No of Seat', v('brta_num_seats')]], rh*2);
+            y += row3(LW2, [['Manufacturer', v('brta_manufacturer')],["Maker's\nCountry", v('brta_country')],['Color', v('brta_color')]], rh*2);
+            y += row3(LW2, [['Horse Power', v('brta_hp')],['RPM', v('brta_rpm')],['CC', v('brta_cc')]], rh);
+            y += row3(LW2, [['Unladen\nWeight', v('brta_unladen_weight')],['Max Weight', v('brta_max_weight')],['No of\nCylinders', v('brta_cylinders')]], rh);
+            // Vehicle Model | Mileage | empty
+            let x3 = ML;
+            lvH(x3, y, LW2, C3-LW2, rh, 'Vehicle Model', v('brta_vehicle_model')); x3 += C3;
+            lvH(x3, y, LW2, C3-LW2, rh, 'Mileage', v('brta_mileage')); x3 += C3;
+            doc.setDrawColor(0,0,0); doc.setLineWidth(0.2); doc.rect(x3, y, C3r, rh);
+            y += rh + 4;
+
+            // ════ TABLE 3: Owner Info — 3-column grid ════
+            const LW3 = 22;
+            hdr(CW, 'Owner Info'); y += rh;
+            let ownerIdx = 1;
+            while (fd['owner_' + ownerIdx + '_name'] || ownerIdx === 1) {
+                const oName   = v('owner_' + ownerIdx + '_name');
+                const oFather = v('owner_' + ownerIdx + '_father');
+                const oAddr   = v('owner_' + ownerIdx + '_address');
+                if (!oName && ownerIdx > 1) break;
+                y += row3(LW3, [["Owner's\nName", oName],["Father's\nName", oFather],["Owner's\nAddress", oAddr]], rh*2);
+                ownerIdx++;
+                if (y + rh*2 > CONTENT_BOTTOM) { y = newPage(); }
+            }
+            y += 5;
+
             // PHOTOS
             const photos = Array.isArray(fd._photos) && fd._photos.length > 0 ? fd._photos : [];
             if (photos.length > 0) {
-                const imgW = CW, imgH = 90, capH = 6, gapY = 10, perPage = 2;
+                const imgW = 158, imgH = 102, capH = 6, gapY = 8, perPage = 2;
                 for (let i = 0; i < photos.length; i++) {
                     if (i % perPage === 0) {
                         y = newPage();
@@ -406,11 +552,12 @@ const ReportGenerator = {
                     }
                     const slotOnPage = i % perPage;
                     const iy = y + slotOnPage * (imgH + capH + gapY);
+                    const imgX = ML + (CW - imgW) / 2;
                     try {
                         const fmt = photos[i].dataUrl.startsWith('data:image/png') ? 'PNG' : 'JPEG';
-                        doc.addImage(photos[i].dataUrl, fmt, ML, iy, imgW, imgH);
-                    } catch(e) { doc.setFillColor(240,240,240); doc.rect(ML, iy, imgW, imgH, 'FD'); }
-                    doc.setDrawColor(0,0,0); doc.setLineWidth(0.4); doc.rect(ML, iy, imgW, imgH); doc.setLineWidth(0.2);
+                        doc.addImage(photos[i].dataUrl, fmt, imgX, iy, imgW, imgH);
+                    } catch(e) { doc.setFillColor(240,240,240); doc.rect(imgX, iy, imgW, imgH, 'FD'); }
+                    doc.setDrawColor(0,0,0); doc.setLineWidth(0.4); doc.rect(imgX, iy, imgW, imgH); doc.setLineWidth(0.2);
                     const nm = photos[i].name.length > 40 ? photos[i].name.slice(0,38)+'...' : photos[i].name;
                     doc.setFont('times','normal'); doc.setFontSize(10); doc.setTextColor(0,0,0);
                     doc.text(nm, PW/2, iy + imgH + 4.5, {align:'center'});
