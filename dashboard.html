@@ -179,7 +179,8 @@ const ReportGenerator = {
             };
 
             const buildOpts = (field, optLabels) => {
-                const saved = Array.isArray(fd[field]) ? fd[field] : [];
+                const raw = fd[field];
+                const saved = Array.isArray(raw) ? raw : (raw ? [raw] : []);
                 return optLabels.map(l => ({ label: l, checked: saved.includes(l) }));
             };
 
@@ -203,7 +204,7 @@ const ReportGenerator = {
             const refBlockW = refLabelW + refColonW + refValueW;
             const refStartX = (PW - refBlockW) / 2;
             refData.forEach(([lbl, val]) => {
-                doc.setFont('times','normal'); doc.setFontSize(10); doc.setTextColor(0,0,0);
+                doc.setFont('times','bold'); doc.setFontSize(10); doc.setTextColor(0,0,0);
                 doc.text(lbl, refStartX, ry);
                 doc.text(':', refStartX + refLabelW, ry);
                 doc.text(String(val), refStartX + refLabelW + refColonW + 1, ry);
@@ -303,51 +304,60 @@ const ReportGenerator = {
             doc.setFont('times','normal'); doc.setFontSize(10);
             y = sectionBar(y, 'Vehicle Details');
             [['Manufacturing Company',v('manufacturer')],['Trim / Package',v('trim_package')],
-             ['Vehicle Model',v('vehicle_model')],['Manufacturing Year',v('manufacturing_year')],
-             ['Country of Origin',v('country_of_origin')],['Cubic Capacity (CC)',v('cubic_capacity')],
+             ['Vehicle Model',v('vehicle_model')],['Country of Origin',v('country_of_origin')],
              ['Engine Number',v('engine_number')],['Chassis Number',v('chassis_number')],
-             ['Color',v('color')],['Type of Vehicle',v('vehicle_type')],['Fuel Used',ar('fuel_used')]
+             ['Manufacturing Year',v('manufacturing_year')],['Cubic Capacity (CC)',v('cubic_capacity')],
+             ['Color',v('color')]
             ].forEach(([l,val])=>{ y = tRow(y,l,val); });
+            y = checkRow(y, 'Type of Vehicle', buildOpts('vehicle_type', ['Non-Hybrid','Hybrid','Electric']));
+            y = checkRow(y, 'Fuel Used', buildOpts('fuel_used', ['Petrol','Diesel','CNG','Octane','Electric']));
             y += 5; if (y + 10 > CONTENT_BOTTOM) y = newPage();
             y = sectionBar(y, 'Registration Details');
             [['Current Owner Name',v('owner_name')],['Registration Number',v('registration_number')],
              ['Registration ID',v('registration_id')],['Registration Date',dt('registration_date')],
-             ['Ownership Transfer Status',v('ownership_transfer')],['Hire Purchase',v('hire_purchase')],
-             ['Insurance Policy No. & Date',v('insurance_policy')],['Tax Clearance Certificate No.',v('tax_clearance_number')],
-             ['Tax Clearance Up To',dt('tax_clearance_date')],['Fitness Certificate No.',v('fitness_cert_number')],
-             ['Fitness Validity Up To',dt('fitness_validity')]
+             ['Ownership Transfer Status',v('ownership_transfer')],['Insurance Policy Number & Date',v('insurance_policy')],
+             ['Tax Clearance Certificate Number',v('tax_clearance_number')],['Tax Clearance Up To',dt('tax_clearance_date')],
+             ['Fitness Certificate Number',v('fitness_cert_number')],['Fitness Validity Up To',dt('fitness_validity')]
             ].forEach(([l,val])=>{ y = tRow(y,l,val); });
+            y = checkRow(y, 'Hire Purchase', buildOpts('hire_purchase', ['Yes','No']));
 
             // PAGE 4: INSPECTION
             y = newPage();
             y = sectionBar(y, 'Interior Inspection');
-            [['Transmission (Gear)','transmission',['Auto','Manual']],['Ignition (Start)','ignition',['Key','Push']],
+            [['Transmission (Gear)','transmission',['Auto','Manual']],['Ignition (Start)','ignition',['Push','Key']],
              ['Power Window','power_window',['Auto','Manual']],['Power Steering','power_steering',['Auto','Manual']],
              ['Power Side Mirror','power_side_mirror',['Auto','Manual']],['Power Door Locks','power_door_locks',['Yes','No']],
              ['Sound System','sound_system',['Built-in','Modified']],['Wooden Panel','wooden_panel',['Yes','No']],
              ['Leather Interior','leather_interior',['Yes','No']],['Airbag','airbag',['Yes','No']],
-             ['Air Condition','air_condition',['Good','Fair','Moderate','Poor']],['Back Camera','back_camera',['Yes','No']],
+             ['Back Camera','back_camera',['Yes','No']],
              ['Ambient Lighting','ambient_lighting',['Built-in','Modified']],
             ].forEach(([lbl,field,opts]) => { y = checkRow(y, lbl, buildOpts(field, opts)); });
+            y = checkRow(y, 'Additional Accessories', buildOpts('interior_accessories_yn', ['Yes','No']));
+            if (fd['interior_accessories_yn'] === 'Yes' || (Array.isArray(fd['interior_accessories_yn']) && fd['interior_accessories_yn'].includes('Yes'))) {
+                y = tRow(y, 'Accessories Detail', v('interior_accessories'));
+            }
             y = tRow(y, 'No. of Seats', v('num_seats'));
-            y = tRow(y, 'Total Mileage', v('total_mileage'));
-            y = tRow(y, 'Additional Accessories (Interior)', v('interior_accessories'));
+            y = tRow(y, 'Total Mileage (as per Dashboard)', v('total_mileage'));
             y += 5; if (y + 10 > CONTENT_BOTTOM) y = newPage();
             y = sectionBar(y, 'Exterior Inspection');
             [['Body Condition','body_condition',['Good','Fair','Moderate','Poor']],
              ['Engine Condition','engine_condition',['Good','Fair','Moderate','Poor']],
              ['Tires Condition','tires_condition',['Good','Fair','Moderate','Poor']],
-             ['Paint Condition','paint_condition',['Good','Fair','Moderate','Poor']],
-             ['HID Lights','hid_lights',['Good','Fair','Moderate','Poor']],
              ['Major Defects','major_defects',['Yes','No']],['Chassis Repaired','chassis_repaired',['Yes','No']],
-             ['Alloy Rim','alloy_rim',['Built-in','Modified']],['Sun Roof','sun_roof',['Yes','No']],
+             ['Alloy Rim','alloy_rim',['Built-in','Modified']],['Sun Roof/Moon Roof','sun_roof',['Yes','No']],
              ['Glass','glass',['Original','Repaired']],['Fog Light','fog_light',['Yes','No']],
-             ['Dimension','dimension',['Long','Hatchback','Saloon','SUV']],['Major Accidental Hist','accidental_history',['Yes','No']],
+             ['Dimension','dimension',['Long','Hatchback','Saloon','SUV']],
+             ['Paint Condition','paint_condition',['Good','Fair','Moderate','Poor']],
             ].forEach(([lbl,field,opts]) => { y = checkRow(y, lbl, buildOpts(field, opts)); });
+            y = checkRow(y, 'Major Accidental History', buildOpts('accidental_history', ['Yes','No']));
             if (fd['accidental_history'] === 'Yes' || (Array.isArray(fd['accidental_history']) && fd['accidental_history'].includes('Yes'))) {
-                y = tRow(y, 'Accidental Details', v('accidental_history_detail'));
+                y = tRow(y, 'Accidental History Detail', v('accidental_history_detail'));
             }
-            y = tRow(y, 'Additional Accessories (Exterior)', v('exterior_accessories'));
+            y = checkRow(y, 'HID Lights', buildOpts('hid_lights', ['Good','Fair','Moderate','Poor']));
+            y = checkRow(y, 'Additional Accessories', buildOpts('exterior_accessories_yn', ['Yes','No']));
+            if (fd['exterior_accessories_yn'] === 'Yes' || (Array.isArray(fd['exterior_accessories_yn']) && fd['exterior_accessories_yn'].includes('Yes'))) {
+                y = tRow(y, 'Accessories Detail', v('exterior_accessories'));
+            }
 
             // PAGE 5: ASSESSMENT + DISCLAIMER
             y = newPage();
@@ -362,11 +372,11 @@ const ReportGenerator = {
             y += 5; if (y + 10 > CONTENT_BOTTOM) y = newPage();
             y = sectionBar(y, 'Inspection Particulars');
             [['Date of Inspection',dt('inspection_date')],['Inspection Time',(()=>{ const t=v('inspection_time'); if(!t||!t.includes(':')) return t||'—'; const [h,m]=t.split(':'); const hr=parseInt(h); return (hr%12||12)+':'+m+(hr<12?' AM':' PM'); })()],
-             ['Location',v('inspection_location')],['Contact Person',v('contact_person')],
-             ['Verification Agent',v('verification_agent')]
+             ['Location',v('inspection_location')],['Contact Person Presented',v('contact_person')],
+             ['Name of Verification Agent',v('verification_agent')]
             ].forEach(([l,val])=>{ y = tRow(y,l,val); });
             y += 6; if (y + 10 > CONTENT_BOTTOM) y = newPage();
-            y = sectionBar(y, 'Disclaimer');
+            y = sectionBar(y, 'Declaration');
             y += 2;
             doc.setFont('times','normal'); doc.setFontSize(10); doc.setTextColor(0,0,0);
             ['The valuation has been performed based on our physical inspection, verification, local market analysis and assessment to the best of our knowledge.',
@@ -524,9 +534,7 @@ const ReportGenerator = {
                     if (i % perPage === 0) {
                         y = newPage();
                         doc.setFont('times','bold'); doc.setFontSize(11); doc.setTextColor(0,0,0);
-                        const pageLabel = i === 0
-                            ? 'Annexure-III: Photograph of Vehicle'
-                            : 'Annexure-III: Photograph of Vehicle (Cont.)';
+                        const pageLabel = 'Annexure-III: Photograph of Vehicle';
                         doc.text(pageLabel, PW/2, y+5, {align:'center'}); y += 14;
                     }
                     const slotOnPage = i % perPage;
@@ -537,7 +545,8 @@ const ReportGenerator = {
                         doc.addImage(photos[i].dataUrl, fmt, imgX, iy, imgW, imgH);
                     } catch(e) { doc.setFillColor(240,240,240); doc.rect(imgX, iy, imgW, imgH, 'FD'); }
                     doc.setDrawColor(0,0,0); doc.setLineWidth(0.4); doc.rect(imgX, iy, imgW, imgH); doc.setLineWidth(0.2);
-                    const nm = photos[i].name.length > 40 ? photos[i].name.slice(0,38)+'...' : photos[i].name;
+                    const rawCaption = photos[i].caption || photos[i].name.replace(/\.[^/.]+$/, '');
+                    const nm = rawCaption.length > 50 ? rawCaption.slice(0, 48) + '...' : rawCaption;
                     doc.setFont('times','normal'); doc.setFontSize(10); doc.setTextColor(0,0,0);
                     doc.text(nm, PW/2, iy + imgH + 4.5, {align:'center'});
                 }
@@ -590,6 +599,11 @@ async function init() {
     const session = await Auth.requireAuth();
     if (!session) return;
     currentUserId = session.user.id;
+    // Sync full_name from auth user_metadata into profiles table
+    const metaName = session.user.user_metadata?.full_name;
+    if (metaName) {
+        await db.from('profiles').upsert({ id: session.user.id, full_name: metaName }, { onConflict: 'id' });
+    }
     const profile = await Auth.getProfile(session.user.id);
     document.getElementById('user-name').textContent = profile.full_name || profile.email;
     document.getElementById('banner-name').textContent = (profile.full_name || profile.email).split(' ')[0];
