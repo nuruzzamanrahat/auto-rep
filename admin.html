@@ -60,7 +60,7 @@
             </div>
             <div class="search-box">
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
-                <input type="text" id="search-input" placeholder="Search by vehicle, reg, email…" oninput="Admin.search(this.value)">
+                <input type="text" id="search-input" placeholder="Search by letter ref, account name, email…" oninput="Admin.search(this.value)">
             </div>
         </div>
         <div class="admin-table" id="admin-submissions-list">
@@ -200,7 +200,8 @@ const ReportGenerator = {
             };
 
             const buildOpts = (field, optLabels) => {
-                const saved = Array.isArray(fd[field]) ? fd[field] : [];
+                const raw = fd[field];
+                const saved = Array.isArray(raw) ? raw : (raw ? [raw] : []);
                 return optLabels.map(l => ({ label: l, checked: saved.includes(l) }));
             };
 
@@ -224,7 +225,7 @@ const ReportGenerator = {
             const refBlockW = refLabelW + refColonW + refValueW;
             const refStartX = (PW - refBlockW) / 2;
             refData.forEach(([lbl, val]) => {
-                doc.setFont('times','normal'); doc.setFontSize(10); doc.setTextColor(0,0,0);
+                doc.setFont('times','bold'); doc.setFontSize(10); doc.setTextColor(0,0,0);
                 doc.text(lbl, refStartX, ry);
                 doc.text(':', refStartX + refLabelW, ry);
                 doc.text(String(val), refStartX + refLabelW + refColonW + 1, ry);
@@ -324,51 +325,60 @@ const ReportGenerator = {
             doc.setFont('times','normal'); doc.setFontSize(10);
             y = sectionBar(y, 'Vehicle Details');
             [['Manufacturing Company',v('manufacturer')],['Trim / Package',v('trim_package')],
-             ['Vehicle Model',v('vehicle_model')],['Manufacturing Year',v('manufacturing_year')],
-             ['Country of Origin',v('country_of_origin')],['Cubic Capacity (CC)',v('cubic_capacity')],
+             ['Vehicle Model',v('vehicle_model')],['Country of Origin',v('country_of_origin')],
              ['Engine Number',v('engine_number')],['Chassis Number',v('chassis_number')],
-             ['Color',v('color')],['Type of Vehicle',v('vehicle_type')],['Fuel Used',ar('fuel_used')]
+             ['Manufacturing Year',v('manufacturing_year')],['Cubic Capacity (CC)',v('cubic_capacity')],
+             ['Color',v('color')]
             ].forEach(([l,val])=>{ y = tRow(y,l,val); });
+            y = checkRow(y, 'Type of Vehicle', buildOpts('vehicle_type', ['Non-Hybrid','Hybrid','Electric']));
+            y = checkRow(y, 'Fuel Used', buildOpts('fuel_used', ['Petrol','Diesel','CNG','Octane','Electric']));
             y += 5; if (y + 10 > CONTENT_BOTTOM) y = newPage();
             y = sectionBar(y, 'Registration Details');
             [['Current Owner Name',v('owner_name')],['Registration Number',v('registration_number')],
              ['Registration ID',v('registration_id')],['Registration Date',dt('registration_date')],
-             ['Ownership Transfer Status',v('ownership_transfer')],['Hire Purchase',v('hire_purchase')],
-             ['Insurance Policy No. & Date',v('insurance_policy')],['Tax Clearance Certificate No.',v('tax_clearance_number')],
-             ['Tax Clearance Up To',dt('tax_clearance_date')],['Fitness Certificate No.',v('fitness_cert_number')],
-             ['Fitness Validity Up To',dt('fitness_validity')]
+             ['Ownership Transfer Status',v('ownership_transfer')],['Insurance Policy Number & Date',v('insurance_policy')],
+             ['Tax Clearance Certificate Number',v('tax_clearance_number')],['Tax Clearance Up To',dt('tax_clearance_date')],
+             ['Fitness Certificate Number',v('fitness_cert_number')],['Fitness Validity Up To',dt('fitness_validity')]
             ].forEach(([l,val])=>{ y = tRow(y,l,val); });
+            y = checkRow(y, 'Hire Purchase', buildOpts('hire_purchase', ['Yes','No']));
 
             // PAGE 4: INSPECTION
             y = newPage();
             y = sectionBar(y, 'Interior Inspection');
-            [['Transmission (Gear)','transmission',['Auto','Manual']],['Ignition (Start)','ignition',['Key','Push']],
+            [['Transmission (Gear)','transmission',['Auto','Manual']],['Ignition (Start)','ignition',['Push','Key']],
              ['Power Window','power_window',['Auto','Manual']],['Power Steering','power_steering',['Auto','Manual']],
              ['Power Side Mirror','power_side_mirror',['Auto','Manual']],['Power Door Locks','power_door_locks',['Yes','No']],
              ['Sound System','sound_system',['Built-in','Modified']],['Wooden Panel','wooden_panel',['Yes','No']],
              ['Leather Interior','leather_interior',['Yes','No']],['Airbag','airbag',['Yes','No']],
-             ['Air Condition','air_condition',['Good','Fair','Moderate','Poor']],['Back Camera','back_camera',['Yes','No']],
+             ['Back Camera','back_camera',['Yes','No']],
              ['Ambient Lighting','ambient_lighting',['Built-in','Modified']],
             ].forEach(([lbl,field,opts]) => { y = checkRow(y, lbl, buildOpts(field, opts)); });
+            y = checkRow(y, 'Additional Accessories', buildOpts('interior_accessories_yn', ['Yes','No']));
+            if (fd['interior_accessories_yn'] === 'Yes' || (Array.isArray(fd['interior_accessories_yn']) && fd['interior_accessories_yn'].includes('Yes'))) {
+                y = tRow(y, 'Accessories Detail', v('interior_accessories'));
+            }
             y = tRow(y, 'No. of Seats', v('num_seats'));
-            y = tRow(y, 'Total Mileage', v('total_mileage'));
-            y = tRow(y, 'Additional Accessories (Interior)', v('interior_accessories'));
+            y = tRow(y, 'Total Mileage (as per Dashboard)', v('total_mileage'));
             y += 5; if (y + 10 > CONTENT_BOTTOM) y = newPage();
             y = sectionBar(y, 'Exterior Inspection');
             [['Body Condition','body_condition',['Good','Fair','Moderate','Poor']],
              ['Engine Condition','engine_condition',['Good','Fair','Moderate','Poor']],
              ['Tires Condition','tires_condition',['Good','Fair','Moderate','Poor']],
-             ['Paint Condition','paint_condition',['Good','Fair','Moderate','Poor']],
-             ['HID Lights','hid_lights',['Good','Fair','Moderate','Poor']],
              ['Major Defects','major_defects',['Yes','No']],['Chassis Repaired','chassis_repaired',['Yes','No']],
-             ['Alloy Rim','alloy_rim',['Built-in','Modified']],['Sun Roof','sun_roof',['Yes','No']],
+             ['Alloy Rim','alloy_rim',['Built-in','Modified']],['Sun Roof/Moon Roof','sun_roof',['Yes','No']],
              ['Glass','glass',['Original','Repaired']],['Fog Light','fog_light',['Yes','No']],
-             ['Dimension','dimension',['Long','Hatchback','Saloon','SUV']],['Major Accidental Hist','accidental_history',['Yes','No']],
+             ['Dimension','dimension',['Long','Hatchback','Saloon','SUV']],
+             ['Paint Condition','paint_condition',['Good','Fair','Moderate','Poor']],
             ].forEach(([lbl,field,opts]) => { y = checkRow(y, lbl, buildOpts(field, opts)); });
+            y = checkRow(y, 'Major Accidental History', buildOpts('accidental_history', ['Yes','No']));
             if (fd['accidental_history'] === 'Yes' || (Array.isArray(fd['accidental_history']) && fd['accidental_history'].includes('Yes'))) {
-                y = tRow(y, 'Accidental Details', v('accidental_history_detail'));
+                y = tRow(y, 'Accidental History Detail', v('accidental_history_detail'));
             }
-            y = tRow(y, 'Additional Accessories (Exterior)', v('exterior_accessories'));
+            y = checkRow(y, 'HID Lights', buildOpts('hid_lights', ['Good','Fair','Moderate','Poor']));
+            y = checkRow(y, 'Additional Accessories', buildOpts('exterior_accessories_yn', ['Yes','No']));
+            if (fd['exterior_accessories_yn'] === 'Yes' || (Array.isArray(fd['exterior_accessories_yn']) && fd['exterior_accessories_yn'].includes('Yes'))) {
+                y = tRow(y, 'Accessories Detail', v('exterior_accessories'));
+            }
 
             // PAGE 5: ASSESSMENT + DISCLAIMER
             y = newPage();
@@ -383,11 +393,11 @@ const ReportGenerator = {
             y += 5; if (y + 10 > CONTENT_BOTTOM) y = newPage();
             y = sectionBar(y, 'Inspection Particulars');
             [['Date of Inspection',dt('inspection_date')],['Inspection Time',(()=>{ const t=v('inspection_time'); if(!t||!t.includes(':')) return t||'—'; const [h,m]=t.split(':'); const hr=parseInt(h); return (hr%12||12)+':'+m+(hr<12?' AM':' PM'); })()],
-             ['Location',v('inspection_location')],['Contact Person',v('contact_person')],
-             ['Verification Agent',v('verification_agent')]
+             ['Location',v('inspection_location')],['Contact Person Presented',v('contact_person')],
+             ['Name of Verification Agent',v('verification_agent')]
             ].forEach(([l,val])=>{ y = tRow(y,l,val); });
             y += 6; if (y + 10 > CONTENT_BOTTOM) y = newPage();
-            y = sectionBar(y, 'Disclaimer');
+            y = sectionBar(y, 'Declaration');
             y += 2;
             doc.setFont('times','normal'); doc.setFontSize(10); doc.setTextColor(0,0,0);
             ['The valuation has been performed based on our physical inspection, verification, local market analysis and assessment to the best of our knowledge.',
@@ -545,9 +555,7 @@ const ReportGenerator = {
                     if (i % perPage === 0) {
                         y = newPage();
                         doc.setFont('times','bold'); doc.setFontSize(11); doc.setTextColor(0,0,0);
-                        const pageLabel = i === 0
-                            ? 'Annexure-III: Photograph of Vehicle'
-                            : 'Annexure-III: Photograph of Vehicle (Cont.)';
+                        const pageLabel = 'Annexure-III: Photograph of Vehicle';
                         doc.text(pageLabel, PW/2, y+5, {align:'center'}); y += 14;
                     }
                     const slotOnPage = i % perPage;
@@ -558,7 +566,8 @@ const ReportGenerator = {
                         doc.addImage(photos[i].dataUrl, fmt, imgX, iy, imgW, imgH);
                     } catch(e) { doc.setFillColor(240,240,240); doc.rect(imgX, iy, imgW, imgH, 'FD'); }
                     doc.setDrawColor(0,0,0); doc.setLineWidth(0.4); doc.rect(imgX, iy, imgW, imgH); doc.setLineWidth(0.2);
-                    const nm = photos[i].name.length > 40 ? photos[i].name.slice(0,38)+'...' : photos[i].name;
+                    const rawCaption = photos[i].caption || photos[i].name.replace(/\.[^/.]+$/, '');
+                    const nm = rawCaption.length > 50 ? rawCaption.slice(0, 48) + '...' : rawCaption;
                     doc.setFont('times','normal'); doc.setFontSize(10); doc.setTextColor(0,0,0);
                     doc.text(nm, PW/2, iy + imgH + 4.5, {align:'center'});
                 }
@@ -634,12 +643,32 @@ const Admin = {
         const container = document.getElementById('admin-submissions-list');
         container.innerHTML = '<div class="loading-spinner"></div>';
         try {
-            let query = db.from('submissions').select('*, profiles(email, full_name)').order('updated_at', { ascending: false });
+            // 1. Fetch submissions
+            let query = db.from('submissions').select('*').order('updated_at', { ascending: false });
             if(this.currentFilter !== 'all') query = query.eq('status', this.currentFilter);
             const { data, error } = await query;
             if(error) throw error;
-            this.allData = data;
-            this.render(data);
+
+            // 2. Build user info map from profiles table
+            //    Supabase stores display name in user_metadata during signup.
+            //    profiles table should mirror it — select all columns to catch any naming variation.
+            const userIds = [...new Set(data.map(s => s.user_id).filter(Boolean))];
+            let profileMap = {};
+            if(userIds.length > 0) {
+                const { data: profiles } = await db.from('profiles').select('*').in('id', userIds);
+                if(profiles) {
+                    profiles.forEach(p => {
+                        // Try every common column name that could hold the display name
+                        const displayName = p.full_name || p.display_name || p.name || p.username || null;
+                        profileMap[p.id] = { ...p, _displayName: displayName };
+                    });
+                }
+            }
+
+            // 3. Attach profile to each submission
+            const enriched = data.map(s => ({ ...s, _profile: profileMap[s.user_id] || null }));
+            this.allData = enriched;
+            this.render(enriched);
         } catch(err) { container.innerHTML = `<div class="error-msg" style="margin:1rem;">Error: ${err.message}</div>`; }
     },
 
@@ -655,7 +684,7 @@ const Admin = {
         const q = query.toLowerCase();
         const filtered = this.allData.filter(sub => {
             const fd = sub.form_data || {};
-            const searchStr = [fd.manufacturer, fd.vehicle_model, fd.registration_number, sub.profiles?.email, sub.profiles?.full_name].join(' ').toLowerCase();
+            const searchStr = [fd.letter_ref, fd.reference_account_name, fd.file_reference_number, sub._profile?.email, sub._profile?._displayName].join(' ').toLowerCase();
             return searchStr.includes(q);
         });
         this.render(filtered);
@@ -666,20 +695,20 @@ const Admin = {
         if(list.length === 0) { container.innerHTML = '<div class="empty-table"><p>No submissions found.</p></div>'; return; }
         container.innerHTML = `
             <table class="admin-table" style="margin:0;">
-                <thead><tr><th>User</th><th>Vehicle</th><th>Reg No</th><th>Status</th><th>Last Updated</th><th>Actions</th></tr></thead>
+                <thead><tr><th>User</th><th>Letter Reference</th><th>Reference Account Name</th><th>Status</th><th>Last Updated</th><th>Actions</th></tr></thead>
                 <tbody>
                     ${list.map(sub => {
                         const fd = sub.form_data || {};
-                        const vehicle = [fd.manufacturer, fd.vehicle_model].filter(Boolean).join(' ') || 'Untitled';
-                        const regNo   = fd.registration_number || '—';
-                        const email   = sub.profiles?.email || 'Unknown';
-                        const name    = sub.profiles?.full_name || email;
+                        const letterRef   = fd.letter_ref || '—';
+                        const refAccount  = fd.reference_account_name || '—';
+                        const email   = sub._profile?.email || '—';
+                        const name    = sub._profile?.full_name || sub._profile?.email || 'Unknown';
                         const date    = new Date(sub.updated_at).toLocaleDateString('en-GB', {day:'2-digit',month:'short',year:'numeric'});
                         const sClass  = {draft:'status-draft', submitted:'status-submitted', reviewed:'status-reviewed'}[sub.status]||'';
                         const sLabel  = sub.status.charAt(0).toUpperCase() + sub.status.slice(1);
                         return `<tr>
-                            <td><div class="user-cell"><div class="user-avatar">${email[0].toUpperCase()}</div><div><div class="user-name">${name}</div><div class="user-email">${email}</div></div></div></td>
-                            <td>${vehicle}</td><td>${regNo}</td>
+                            <td><div class="user-cell"><div class="user-avatar">${(name||'?')[0].toUpperCase()}</div><div><div class="user-name">${name}</div><div class="user-email">${email}</div></div></div></td>
+                            <td>${letterRef}</td><td>${refAccount}</td>
                             <td><span class="status-badge ${sClass}">${sLabel}</span></td>
                             <td>${date}</td>
                             <td><div class="action-buttons">
