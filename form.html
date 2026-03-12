@@ -247,11 +247,11 @@
         <div class="section-nav-item" onclick="showSection('sec-assessment', this)">
             <span class="nav-icon">📊</span> Assessment
         </div>
+
+        <div class="nav-section-label">Documents</div>
         <div class="section-nav-item" onclick="showSection('sec-photos', this)">
             <span class="nav-icon">📷</span> Photos
         </div>
-
-        <div class="nav-section-label">Documents</div>
         <div class="section-nav-item" onclick="showSection('sec-qr', this)">
             <span class="nav-icon">📲</span> QR Code
         </div>
@@ -448,22 +448,21 @@
                     </div>
                     <div class="form-group">
                         <label class="form-label">Type of Vehicle</label>
-                        <select class="form-control" data-field="vehicle_type">
-                            <option value="">Select type</option>
-                            <option>Convention</option>
-                            <option>Hybrid</option>
-                            <option>Electric</option>
-                        </select>
+                        <div class="pill-group" data-checkbox-group="vehicle_type">
+                            <span class="pill" data-value="Non-Hybrid" onclick="togglePill(this)">Non-Hybrid</span>
+                            <span class="pill" data-value="Hybrid" onclick="togglePill(this)">Hybrid</span>
+                            <span class="pill" data-value="Electric" onclick="togglePill(this)">Electric</span>
+                        </div>
                     </div>
                 </div>
                 <div class="form-group">
                     <label class="form-label">Fuel Used</label>
                     <div class="pill-group" data-checkbox-group="fuel_used">
-                        <span class="pill" data-value="Octane" onclick="togglePill(this)">Octane</span>
+                        <span class="pill" data-value="Petrol" onclick="togglePill(this)">Petrol</span>
                         <span class="pill" data-value="Diesel" onclick="togglePill(this)">Diesel</span>
                         <span class="pill" data-value="CNG" onclick="togglePill(this)">CNG</span>
-                        <span class="pill" data-value="LPG" onclick="togglePill(this)">LPG</span>
-                        <span class="pill" data-value="Hybrid" onclick="togglePill(this)">Hybrid</span>
+                        <span class="pill" data-value="Octane" onclick="togglePill(this)">Octane</span>
+                        <span class="pill" data-value="Electric" onclick="togglePill(this)">Electric</span>
                     </div>
                 </div>
             </div>
@@ -500,11 +499,10 @@
                     </div>
                     <div class="form-group">
                         <label class="form-label">Hire Purchase</label>
-                        <select class="form-control" data-field="hire_purchase">
-                            <option value="">Select</option>
-                            <option>Yes</option>
-                            <option>No</option>
-                        </select>
+                        <div class="pill-group" data-checkbox-group="hire_purchase">
+                            <span class="pill" data-value="Yes" onclick="togglePill(this)">Yes</span>
+                            <span class="pill" data-value="No" onclick="togglePill(this)">No</span>
+                        </div>
                     </div>
                 </div>
                 <div class="form-row">
@@ -550,8 +548,15 @@
                     </div>
                 </div>
                 <div class="form-group">
-                    <label class="form-label">Additional Accessories (Interior)</label>
-                    <textarea class="form-control" data-field="interior_accessories" rows="2" placeholder="Describe if any"></textarea>
+                    <label class="form-label">Additional Accessories</label>
+                    <div class="pill-group" data-checkbox-group="interior_accessories_yn" data-toggle-target="interior-acc-detail">
+                        <span class="pill" data-value="Yes" onclick="togglePill(this);toggleDetail('interior-acc-detail',this)">Yes</span>
+                        <span class="pill" data-value="No" onclick="togglePill(this);toggleDetail('interior-acc-detail',this)">No</span>
+                    </div>
+                </div>
+                <div class="form-group" id="interior-acc-detail" style="display:none;">
+                    <label class="form-label">Accessories Detail</label>
+                    <textarea class="form-control" data-field="interior_accessories" rows="2" placeholder="Describe accessories"></textarea>
                 </div>
             </div>
         </div>
@@ -561,13 +566,16 @@
             <div class="section-card">
                 <div class="section-heading">🔧 Exterior Inspection</div>
                 <div id="exterior-checks"></div>
-                <div class="form-group" style="margin-top:1rem;">
-                    <label class="form-label">Major Accidental History – Details</label>
-                    <textarea class="form-control" data-field="accidental_history_detail" rows="2" placeholder="Describe if any"></textarea>
-                </div>
                 <div class="form-group">
-                    <label class="form-label">Additional Accessories (Exterior)</label>
-                    <textarea class="form-control" data-field="exterior_accessories" rows="2" placeholder="Describe if any"></textarea>
+                    <label class="form-label">Additional Accessories</label>
+                    <div class="pill-group" data-checkbox-group="exterior_accessories_yn" data-toggle-target="exterior-acc-detail">
+                        <span class="pill" data-value="Yes" onclick="togglePill(this);toggleDetail('exterior-acc-detail',this)">Yes</span>
+                        <span class="pill" data-value="No" onclick="togglePill(this);toggleDetail('exterior-acc-detail',this)">No</span>
+                    </div>
+                </div>
+                <div class="form-group" id="exterior-acc-detail" style="display:none;">
+                    <label class="form-label">Accessories Detail</label>
+                    <textarea class="form-control" data-field="exterior_accessories" rows="2" placeholder="Describe accessories"></textarea>
                 </div>
             </div>
         </div>
@@ -629,7 +637,7 @@
         <div class="report-section" id="sec-qr">
             <div class="section-card">
                 <div class="section-heading">📲 QR Code / Document Link</div>
-                <p style="margin-bottom:1.5rem;color:var(--gray-600);font-size:0.875rem;">Upload a QR code image (e.g. BRTA verification link, payment receipt, or document link). It will appear on the last page of the PDF.</p>
+                <p style="margin-bottom:1.5rem;color:var(--gray-600);font-size:0.875rem;">Upload a QR code image</p>
                 <div style="display:flex;gap:2rem;align-items:flex-start;flex-wrap:wrap;">
                     <div>
                         <div id="qr-preview-container" style="display:none;margin-bottom:1rem;">
@@ -898,7 +906,8 @@ const ReportGenerator = {
             };
 
             const buildOpts = (field, optLabels) => {
-                const saved = Array.isArray(fd[field]) ? fd[field] : [];
+                const raw = fd[field];
+                const saved = Array.isArray(raw) ? raw : (raw ? [raw] : []);
                 return optLabels.map(l => ({ label: l, checked: saved.includes(l) }));
             };
 
@@ -925,7 +934,7 @@ const ReportGenerator = {
             const refBlockW = refLabelW + refColonW + refValueW;
             const refStartX = (PW - refBlockW) / 2;
             refData.forEach(([lbl, val]) => {
-                doc.setFont('times','normal'); doc.setFontSize(10); doc.setTextColor(0,0,0);
+                doc.setFont('times','bold'); doc.setFontSize(10); doc.setTextColor(0,0,0);
                 doc.text(lbl, refStartX, ry);
                 doc.text(':', refStartX + refLabelW, ry);
                 doc.text(String(val), refStartX + refLabelW + refColonW + 1, ry);
@@ -1055,26 +1064,28 @@ const ReportGenerator = {
             doc.setFont('times','normal'); doc.setFontSize(10);
             y = sectionBar(y, 'Vehicle Details');
             [['Manufacturing Company',v('manufacturer')],['Trim / Package',v('trim_package')],
-             ['Vehicle Model',v('vehicle_model')],['Manufacturing Year',v('manufacturing_year')],
-             ['Country of Origin',v('country_of_origin')],['Cubic Capacity (CC)',v('cubic_capacity')],
+             ['Vehicle Model',v('vehicle_model')],['Country of Origin',v('country_of_origin')],
              ['Engine Number',v('engine_number')],['Chassis Number',v('chassis_number')],
-             ['Color',v('color')],['Type of Vehicle',v('vehicle_type')],['Fuel Used',ar('fuel_used')]
+             ['Manufacturing Year',v('manufacturing_year')],['Cubic Capacity (CC)',v('cubic_capacity')],
+             ['Color',v('color')]
             ].forEach(([l,val])=>{ y = tRow(y,l,val); });
+            y = checkRow(y, 'Type of Vehicle', buildOpts('vehicle_type', ['Non-Hybrid','Hybrid','Electric']));
+            y = checkRow(y, 'Fuel Used', buildOpts('fuel_used', ['Petrol','Diesel','CNG','Octane','Electric']));
             y += 5; if (y + 10 > CONTENT_BOTTOM) y = newPage();
             y = sectionBar(y, 'Registration Details');
             [['Current Owner Name',v('owner_name')],['Registration Number',v('registration_number')],
              ['Registration ID',v('registration_id')],['Registration Date',dt('registration_date')],
-             ['Ownership Transfer Status',v('ownership_transfer')],['Hire Purchase',v('hire_purchase')],
-             ['Insurance Policy No. & Date',v('insurance_policy')],['Tax Clearance Certificate No.',v('tax_clearance_number')],
-             ['Tax Clearance Up To',dt('tax_clearance_date')],['Fitness Certificate No.',v('fitness_cert_number')],
-             ['Fitness Validity Up To',dt('fitness_validity')]
+             ['Ownership Transfer Status',v('ownership_transfer')],['Insurance Policy Number & Date',v('insurance_policy')],
+             ['Tax Clearance Certificate Number',v('tax_clearance_number')],['Tax Clearance Up To',dt('tax_clearance_date')],
+             ['Fitness Certificate Number',v('fitness_cert_number')],['Fitness Validity Up To',dt('fitness_validity')]
             ].forEach(([l,val])=>{ y = tRow(y,l,val); });
+            y = checkRow(y, 'Hire Purchase', buildOpts('hire_purchase', ['Yes','No']));
 
             // PAGE 4: INTERIOR INSPECTION
             y = newPage();
             y = sectionBar(y, 'Interior Inspection');
             [['Transmission (Gear)','transmission',['Auto','Manual']],
-             ['Ignition (Start)','ignition',['Key','Push']],
+             ['Ignition (Start)','ignition',['Push','Key']],
              ['Power Window','power_window',['Auto','Manual']],
              ['Power Steering','power_steering',['Auto','Manual']],
              ['Power Side Mirror','power_side_mirror',['Auto','Manual']],
@@ -1083,35 +1094,39 @@ const ReportGenerator = {
              ['Wooden Panel','wooden_panel',['Yes','No']],
              ['Leather Interior','leather_interior',['Yes','No']],
              ['Airbag','airbag',['Yes','No']],
-             ['Air Condition','air_condition',['Good','Fair','Moderate','Poor']],
              ['Back Camera','back_camera',['Yes','No']],
              ['Ambient Lighting','ambient_lighting',['Built-in','Modified']],
             ].forEach(([lbl,field,opts]) => { y = checkRow(y, lbl, buildOpts(field, opts)); });
+            y = checkRow(y, 'Additional Accessories', buildOpts('interior_accessories_yn', ['Yes','No']));
+            if (fd['interior_accessories_yn'] === 'Yes' || (Array.isArray(fd['interior_accessories_yn']) && fd['interior_accessories_yn'].includes('Yes'))) {
+                y = tRow(y, 'Accessories Detail', v('interior_accessories'));
+            }
             y = tRow(y, 'No. of Seats', v('num_seats'));
-            y = tRow(y, 'Total Mileage', v('total_mileage'));
-            y = tRow(y, 'Additional Accessories (Interior)', v('interior_accessories'));
+            y = tRow(y, 'Total Mileage (as per Dashboard)', v('total_mileage'));
 
             y += 5; if (y + 10 > CONTENT_BOTTOM) y = newPage();
             y = sectionBar(y, 'Exterior Inspection');
             [['Body Condition','body_condition',['Good','Fair','Moderate','Poor']],
              ['Engine Condition','engine_condition',['Good','Fair','Moderate','Poor']],
              ['Tires Condition','tires_condition',['Good','Fair','Moderate','Poor']],
-             ['Paint Condition','paint_condition',['Good','Fair','Moderate','Poor']],
-             ['HID Lights','hid_lights',['Good','Fair','Moderate','Poor']],
              ['Major Defects','major_defects',['Yes','No']],
              ['Chassis Repaired','chassis_repaired',['Yes','No']],
              ['Alloy Rim','alloy_rim',['Built-in','Modified']],
-             ['Sun Roof','sun_roof',['Yes','No']],
+             ['Sun Roof/Moon Roof','sun_roof',['Yes','No']],
              ['Glass','glass',['Original','Repaired']],
              ['Fog Light','fog_light',['Yes','No']],
              ['Dimension','dimension',['Long','Hatchback','Saloon','SUV']],
-             ['Major Accidental Hist','accidental_history',['Yes','No']],
+             ['Paint Condition','paint_condition',['Good','Fair','Moderate','Poor']],
             ].forEach(([lbl,field,opts]) => { y = checkRow(y, lbl, buildOpts(field, opts)); });
-            // Fix 4: Accidental Details only if accidental_history === 'Yes'
+            y = checkRow(y, 'Major Accidental History', buildOpts('accidental_history', ['Yes','No']));
             if (fd['accidental_history'] === 'Yes' || (Array.isArray(fd['accidental_history']) && fd['accidental_history'].includes('Yes'))) {
-                y = tRow(y, 'Accidental Details', v('accidental_history_detail'));
+                y = tRow(y, 'Accidental History Detail', v('accidental_history_detail'));
             }
-            y = tRow(y, 'Additional Accessories (Exterior)', v('exterior_accessories'));
+            y = checkRow(y, 'HID Lights', buildOpts('hid_lights', ['Good','Fair','Moderate','Poor']));
+            y = checkRow(y, 'Additional Accessories', buildOpts('exterior_accessories_yn', ['Yes','No']));
+            if (fd['exterior_accessories_yn'] === 'Yes' || (Array.isArray(fd['exterior_accessories_yn']) && fd['exterior_accessories_yn'].includes('Yes'))) {
+                y = tRow(y, 'Accessories Detail', v('exterior_accessories'));
+            }
 
             // PAGE 5: ASSESSMENT + DISCLAIMER
             y = newPage();
@@ -1127,11 +1142,11 @@ const ReportGenerator = {
             y += 5; if (y + 10 > CONTENT_BOTTOM) y = newPage();
             y = sectionBar(y, 'Inspection Particulars');
             [['Date of Inspection',dt('inspection_date')],['Inspection Time',(()=>{ const t=v('inspection_time'); if(!t||!t.includes(':')) return t||'—'; const [h,m]=t.split(':'); const hr=parseInt(h); return (hr%12||12)+':'+m+(hr<12?' AM':' PM'); })()],
-             ['Location',v('inspection_location')],['Contact Person',v('contact_person')],
-             ['Verification Agent',v('verification_agent')]
+             ['Location',v('inspection_location')],['Contact Person Presented',v('contact_person')],
+             ['Name of Verification Agent',v('verification_agent')]
             ].forEach(([l,val])=>{ y = tRow(y,l,val); });
             y += 6; if (y + 10 > CONTENT_BOTTOM) y = newPage();
-            y = sectionBar(y, 'Disclaimer');
+            y = sectionBar(y, 'Declaration');
             y += 2; // Fix 1: gap between headline and first item
             doc.setFont('times','normal'); doc.setFontSize(10); doc.setTextColor(0,0,0);
             ['The valuation has been performed based on our physical inspection, verification, local market analysis and assessment to the best of our knowledge.',
@@ -1292,9 +1307,7 @@ const ReportGenerator = {
                         y = newPage();
                         doc.setFont('times','bold'); doc.setFontSize(11); doc.setTextColor(0,0,0);
                         // Fix 3: renamed titles
-                        const pageLabel = i === 0
-                            ? 'Annexure-III: Photograph of Vehicle'
-                            : 'Annexure-III: Photograph of Vehicle (Cont.)';
+                        const pageLabel = 'Annexure-III: Photograph of Vehicle';
                         doc.text(pageLabel, PW/2, y+5, {align:'center'}); y += 14;
                         // Fix 2: ref/reg line removed
                     }
@@ -1309,7 +1322,8 @@ const ReportGenerator = {
                     doc.setDrawColor(0,0,0); doc.setLineWidth(0.4);
                     doc.rect(imgX, iy, imgW, imgH);
                     doc.setLineWidth(0.2);
-                    const nm = photos[i].name.length > 40 ? photos[i].name.slice(0, 38) + '...' : photos[i].name;
+                    const rawCaption = photos[i].caption || photos[i].name.replace(/\.[^/.]+$/, '');
+                    const nm = rawCaption.length > 50 ? rawCaption.slice(0, 48) + '...' : rawCaption;
                     doc.setFont('times','normal'); doc.setFontSize(10); doc.setTextColor(0,0,0);
                     doc.text(nm, PW/2, iy + imgH + 4.5, {align:'center'});
                 }
@@ -1390,6 +1404,14 @@ function togglePill(el) {
     el.classList.toggle('checked');
 }
 
+function toggleDetail(targetId, el) {
+    const box = document.getElementById(targetId);
+    if (!box) return;
+    const group = el.closest('[data-checkbox-group]');
+    const checked = group ? [...group.querySelectorAll('.pill.checked')].map(p=>p.dataset.value) : [];
+    box.style.display = checked.includes('Yes') ? 'block' : 'none';
+}
+
 // ===== BUILD CHECKBOX ROWS =====
 function buildCheckRow(label, field, options, single=true) {
     return `
@@ -1432,12 +1454,22 @@ document.getElementById('exterior-checks').innerHTML = [
     ['Major Defects',        'major_defects',       twoOpts],
     ['Chassis Repaired',     'chassis_repaired',    twoOpts],
     ['Alloy Rim',            'alloy_rim',           builtMod],
-    ['Sun Roof',             'sun_roof',            twoOpts],
+    ['Sun Roof/Moon Roof',             'sun_roof',            twoOpts],
     ['Glass',                'glass',               origRep],
     ['Fog Light',            'fog_light',           twoOpts],
     ['Dimension',            'dimension',           ['Long','Hatchback','Saloon','SUV']],
-    ['Major Accidental Hist','accidental_history',  twoOpts],
-].map(([l,f,o])=>buildCheckRow(l,f,o,true)).join('');
+].map(([l,f,o])=>buildCheckRow(l,f,o,true)).join('') +
+`<div class="form-group">
+    <label class="form-label">Major Accidental History</label>
+    <div class="pill-group" data-checkbox-group="accidental_history" data-single="true" data-toggle-target="accidental-detail">
+        <span class="pill" data-value="Yes" onclick="togglePill(this);toggleDetail('accidental-detail',this)">Yes</span>
+        <span class="pill" data-value="No" onclick="togglePill(this);toggleDetail('accidental-detail',this)">No</span>
+    </div>
+</div>
+<div class="form-group" id="accidental-detail" style="display:none;">
+    <label class="form-label">Accidental History Detail</label>
+    <textarea class="form-control" data-field="accidental_history_detail" rows="2" placeholder="Describe accidental history"></textarea>
+</div>`;
 
 document.getElementById('assessment-checks').innerHTML = [
     ['Interior Condition', 'interior_condition', ['Good','Average','Poor']],
@@ -1533,7 +1565,8 @@ function handlePhotoUpload(input) {
         if (file.size > 2 * 1024 * 1024) { UI.showToast(`${file.name} is too large (max 2MB)`, 'error'); return; }
         const reader = new FileReader();
         reader.onload = (e) => {
-            uploadedPhotos.push({ name: file.name, dataUrl: e.target.result });
+            const baseName = file.name.replace(/\.[^/.]+$/, '');
+            uploadedPhotos.push({ name: file.name, caption: baseName, dataUrl: e.target.result });
             renderPhotoGrid();
             setSaveStatus('unsaved');
         };
@@ -1545,10 +1578,16 @@ function handlePhotoUpload(input) {
 function renderPhotoGrid() {
     const grid = document.getElementById('photo-upload-grid');
     grid.innerHTML = uploadedPhotos.map((p, i) => `
-        <div style="position:relative;border-radius:var(--r-sm);overflow:hidden;border:1px solid var(--gray-200);aspect-ratio:4/3;">
-            <img src="${p.dataUrl}" style="width:100%;height:100%;object-fit:cover;">
-            <button onclick="removePhoto(${i})" style="position:absolute;top:4px;right:4px;background:rgba(220,38,38,0.9);color:white;border:none;border-radius:50%;width:24px;height:24px;cursor:pointer;font-size:14px;line-height:1;display:flex;align-items:center;justify-content:center;">×</button>
-            <div style="position:absolute;bottom:0;left:0;right:0;background:rgba(0,0,0,0.5);color:white;font-size:0.7rem;padding:2px 6px;overflow:hidden;white-space:nowrap;text-overflow:ellipsis;">${p.name}</div>
+        <div style="border-radius:var(--r-sm);border:1px solid var(--gray-200);overflow:hidden;display:flex;flex-direction:column;">
+            <div style="position:relative;aspect-ratio:4/3;">
+                <img src="${p.dataUrl}" style="width:100%;height:100%;object-fit:cover;">
+                <button onclick="removePhoto(${i})" style="position:absolute;top:4px;right:4px;background:rgba(220,38,38,0.9);color:white;border:none;border-radius:50%;width:24px;height:24px;cursor:pointer;font-size:14px;line-height:1;display:flex;align-items:center;justify-content:center;">×</button>
+            </div>
+            <div style="padding:4px 6px;background:#f9f9f9;border-top:1px solid var(--gray-200);">
+                <input type="text" value="${p.caption||''}" placeholder="Photo caption"
+                    onchange="uploadedPhotos[${i}].caption=this.value;setSaveStatus('unsaved');"
+                    style="width:100%;font-size:0.75rem;border:none;background:transparent;outline:none;color:#333;padding:2px 0;">
+            </div>
         </div>`).join('');
     const label = document.getElementById('photo-upload-label');
     if (uploadedPhotos.length >= 12) label.style.display = 'none';
@@ -1586,7 +1625,7 @@ function populateFormData(data) {
         if(!Array.isArray(saved)) return;
         group.querySelectorAll('.pill').forEach(p => { p.classList.toggle('checked', saved.includes(p.dataset.value)); });
     });
-    if (Array.isArray(data._photos)) { uploadedPhotos = data._photos; renderPhotoGrid(); }
+    if (Array.isArray(data._photos)) { uploadedPhotos = data._photos.map(p => ({ ...p, caption: p.caption ?? p.name.replace(/\.[^/.]+$/, '') })); renderPhotoGrid(); }
     if (data._qr) {
         uploadedQR = data._qr;
         document.getElementById('qr-preview-img').src = data._qr.dataUrl;
@@ -1615,6 +1654,11 @@ async function init() {
     const session = await Auth.requireAuth();
     if(!session) return;
     currentUserId = session.user.id;
+    // Sync full_name from auth user_metadata into profiles table
+    const metaName = session.user.user_metadata?.full_name;
+    if (metaName) {
+        await db.from('profiles').upsert({ id: session.user.id, full_name: metaName }, { onConflict: 'id' });
+    }
     const params = new URLSearchParams(window.location.search);
     const submissionId = params.get('id');
     isAdminMode = params.get('admin') === 'true';
